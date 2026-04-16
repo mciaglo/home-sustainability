@@ -26,7 +26,7 @@ export default function SummaryStrip({ results }: Props) {
       label: t('results.summary.maxSavings'),
       value: `€${fmt(maxAnnualSaving)}`,
       unit: t('results.card.perYear'),
-      colour: 'text-green-600',
+      colour: 'text-emerald-700',
     },
     {
       label: t('results.summary.bestPayback'),
@@ -51,11 +51,11 @@ export default function SummaryStrip({ results }: Props) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {items.map(item => (
-        <div key={item.label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-          <p className="text-xs text-gray-500 mb-1">{item.label}</p>
+        <div key={item.label} className="bg-white rounded-xl border border-stone-200 px-4 py-3">
+          <p className="text-xs text-stone-500 mb-1">{item.label}</p>
           <p className={`text-xl font-bold ${item.colour}`}>
             {item.value}
-            <span className="text-xs font-normal text-gray-400 ml-1">{item.unit}</span>
+            <span className="text-xs font-normal text-stone-400 ml-1">{item.unit}</span>
           </p>
         </div>
       ))}

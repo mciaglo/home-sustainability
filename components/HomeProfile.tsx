@@ -21,16 +21,16 @@ const INSULATION_LABELS: Record<InsulationLevel, { nl: string; en: string }> = {
 
 const LABEL_COLOURS: Record<EnergyLabel, string> = {
   'A+++': 'bg-green-700 text-white',
-  'A++':  'bg-green-600 text-white',
-  'A+':   'bg-green-500 text-white',
-  'A':    'bg-green-400 text-white',
+  'A++':  'bg-emerald-700 text-white',
+  'A+':   'bg-emerald-600 text-white',
+  'A':    'bg-emerald-500 text-white',
   'B':    'bg-lime-400 text-white',
-  'C':    'bg-yellow-400 text-gray-900',
-  'D':    'bg-amber-400 text-gray-900',
+  'C':    'bg-yellow-400 text-stone-900',
+  'D':    'bg-amber-400 text-stone-900',
   'E':    'bg-orange-400 text-white',
   'F':    'bg-orange-500 text-white',
   'G':    'bg-red-500 text-white',
-  'unknown': 'bg-gray-300 text-gray-700',
+  'unknown': 'bg-gray-300 text-stone-700',
 }
 
 interface Props {
@@ -41,7 +41,7 @@ interface Props {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+      <label className="block text-xs font-medium text-stone-500 mb-1 uppercase tracking-wide">
         {label}
       </label>
       {children}
@@ -64,7 +64,7 @@ function SelectField<T extends string>({
     <select
       value={value}
       onChange={e => onChange(e.target.value as T)}
-      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+      className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-white text-stone-900"
     >
       {options.map(o => (
         <option key={o} value={o}>{labelFn(o)}</option>
@@ -164,8 +164,8 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
       )}
 
       {/* Core fields */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+      <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">
           {locale === 'nl' ? 'Woninggegevens' : 'Building data'}
         </h2>
 
@@ -178,7 +178,7 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
               min={1800}
               max={new Date().getFullYear()}
               onChange={e => setYearBuilt(Number(e.target.value))}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
             />
           </Field>
 
@@ -190,7 +190,7 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
               min={20}
               max={1000}
               onChange={e => setFloorArea(Number(e.target.value))}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
             />
           </Field>
         </div>
@@ -232,8 +232,8 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
       </div>
 
       {/* Insulation */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+      <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">
           {t('profile.insulation')}
         </h2>
 
@@ -254,14 +254,14 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
       </div>
 
       {/* Energy bill upload */}
-      <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-300 p-5 space-y-3">
+      <div className="bg-stone-50 rounded-2xl border border-dashed border-stone-300 p-5 space-y-3">
         <div>
-          <p className="text-sm font-medium text-gray-700">{t('profile.uploadBill')}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{t('profile.uploadBillHint')}</p>
+          <p className="text-sm font-medium text-stone-700">{t('profile.uploadBill')}</p>
+          <p className="text-xs text-stone-400 mt-0.5">{t('profile.uploadBillHint')}</p>
         </div>
 
         {billUploaded ? (
-          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-sm text-emerald-800 bg-emerald-50 border border-green-200 rounded-lg px-3 py-2">
             <span>✓</span>
             <span>
               {locale === 'nl'
@@ -270,7 +270,7 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
             </span>
           </div>
         ) : (
-          <label className="inline-flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-colors">
+          <label className="inline-flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-stone-200 rounded-lg hover:border-stone-400 transition-colors">
             <span>📄</span>
             <span>{locale === 'nl' ? 'PDF selecteren' : 'Select PDF'}</span>
             <input
@@ -286,7 +286,7 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
       {/* Confirm button */}
       <button
         onClick={handleConfirm}
-        className="w-full py-4 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold text-lg rounded-2xl transition-colors shadow-sm"
+        className="w-full py-4 px-6 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-lg rounded-2xl transition-colors shadow-sm"
       >
         {t('profile.confirm')}
       </button>

@@ -21,15 +21,15 @@ export default function SortControls({ value, onChange }: Props) {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs font-medium text-gray-500 mr-1">{t('results.sortBy')}:</span>
+      <span className="text-xs font-medium text-stone-500 mr-1">{t('results.sortBy')}:</span>
       {options.map(o => (
         <button
           key={o.id}
           onClick={() => onChange(o.id)}
           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
             value === o.id
-              ? 'bg-gray-900 text-white'
-              : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'
+              ? 'bg-stone-900 text-white'
+              : 'bg-white border border-stone-200 text-stone-600 hover:border-stone-400'
           }`}
         >
           {o.label}

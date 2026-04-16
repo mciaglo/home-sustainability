@@ -154,12 +154,15 @@ export default function ResultsPage() {
           results={results}
         />
 
-        {/* Controls row */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <SortControls value={sortMode} onChange={setSortMode} />
-          <div className="sm:ml-auto">
-            <PriceScenarioToggle value={scenario} onChange={s => { setScenario(s); setSelectedIds(new Set()) }} />
-          </div>
+        {/* Sort controls */}
+        <SortControls value={sortMode} onChange={setSortMode} />
+
+        {/* Price scenario */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
+            {locale === 'nl' ? 'Bereken met gasprijzen van' : 'Calculate using gas prices from'}
+          </p>
+          <PriceScenarioToggle value={scenario} onChange={s => { setScenario(s); setSelectedIds(new Set()) }} />
         </div>
 
         {/* Upgrade cards */}

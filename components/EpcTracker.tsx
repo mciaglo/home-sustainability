@@ -25,16 +25,16 @@ const EPC_DELTA: Partial<Record<UpgradeResult['id'], number>> = {
 
 const LABEL_COLOUR: Record<EnergyLabel, string> = {
   'A+++': 'bg-green-700 text-white',
-  'A++':  'bg-green-600 text-white',
-  'A+':   'bg-green-500 text-white',
-  'A':    'bg-green-400 text-white',
+  'A++':  'bg-emerald-700 text-white',
+  'A+':   'bg-emerald-600 text-white',
+  'A':    'bg-emerald-500 text-white',
   'B':    'bg-lime-400 text-white',
-  'C':    'bg-yellow-400 text-gray-900',
-  'D':    'bg-amber-400 text-gray-900',
+  'C':    'bg-yellow-400 text-stone-900',
+  'D':    'bg-amber-400 text-stone-900',
   'E':    'bg-orange-400 text-white',
   'F':    'bg-orange-500 text-white',
   'G':    'bg-red-500 text-white',
-  'unknown': 'bg-gray-300 text-gray-700',
+  'unknown': 'bg-gray-300 text-stone-700',
 }
 
 interface Props {
@@ -56,8 +56,8 @@ export default function EpcTracker({ currentLabel, selectedIds, results }: Props
   const improved = potentialIdx > currentIdx
 
   return (
-    <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 px-4 py-3">
-      <div className="text-xs text-gray-500 leading-tight">
+    <div className="flex items-center gap-3 bg-white rounded-xl border border-stone-200 px-4 py-3">
+      <div className="text-xs text-stone-500 leading-tight">
         {locale === 'nl' ? 'Huidig label' : 'Current label'}
       </div>
       <span className={`px-2.5 py-1 rounded-lg text-sm font-bold ${LABEL_COLOUR[currentLabel]}`}>
@@ -66,21 +66,21 @@ export default function EpcTracker({ currentLabel, selectedIds, results }: Props
 
       {improved && (
         <>
-          <span className="text-gray-300">→</span>
-          <div className="text-xs text-gray-500 leading-tight">
+          <span className="text-stone-300">→</span>
+          <div className="text-xs text-stone-500 leading-tight">
             {locale === 'nl' ? 'Potentieel' : 'Potential'}
           </div>
           <span className={`px-2.5 py-1 rounded-lg text-sm font-bold ${LABEL_COLOUR[potentialLabel]}`}>
             {potentialLabel}
           </span>
-          <span className="text-xs text-green-600 font-medium">
+          <span className="text-xs text-emerald-700 font-medium">
             +{potentialIdx - currentIdx} {locale === 'nl' ? 'stappen' : 'steps'}
           </span>
         </>
       )}
 
       {!improved && (
-        <span className="text-xs text-gray-400 italic">
+        <span className="text-xs text-stone-400 italic">
           {locale === 'nl' ? 'Selecteer maatregelen om verbetering te zien' : 'Select upgrades to see improvement'}
         </span>
       )}
