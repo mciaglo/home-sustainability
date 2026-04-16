@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const lat = req.nextUrl.searchParams.get('lat')
   const lng = req.nextUrl.searchParams.get('lng')
 
-  const apiKey = process.env.GOOGLE_STREET_VIEW_API_KEY
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY
 
   // No key configured — return stub
   if (!apiKey) {

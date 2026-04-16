@@ -4,34 +4,57 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/locale-context'
 
-interface PostcodeSuggestion {
-  postcode: string
-  street: string
-  city: string
-  label: string
+interface PdokDoc {
+  weergavenaam: string
+  type: string
+  centroide_ll: string // "POINT(lon lat)"
+  postcode?: string
+  straatnaam?: string
+  huisnummer?: string
+  woonplaatsnaam?: string
 }
 
-async function fetchPostcodeSuggestions(query: string): Promise<PostcodeSuggestion[]> {
-  if (query.length < 4) return []
+interface Suggestion {
+  label: string       // display string
+  address: string     // what gets passed to /api/lookup
+  lat: number
+  lng: number
+}
 
-  // postcode.tech free API — no key required
-  const postcodeMatch = query.match(/^(\d{4})\s?([A-Z]{0,2})$/i)
-  if (!postcodeMatch) return []
+function parseCentroide(wkt: string): { lat: number; lng: number } | null {
+  // WKT format: "POINT(4.88969 52.37316)" — lon first, lat second
+  const m = wkt.match(/POINT\(([^\s]+)\s+([^\)]+)\)/)
+  if (!m) return null
+  return { lng: parseFloat(m[1]), lat: parseFloat(m[2]) }
+}
 
-  const postcode = postcodeMatch[1] + (postcodeMatch[2] ?? '').toUpperCase()
+async function fetchSuggestions(query: string): Promise<Suggestion[]> {
+  if (query.length < 3) return []
+
   try {
-    const res = await fetch(`https://postcode.tech/api/v1/postcode/full?postcode=${postcode}`, {
-      headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_POSTCODE_TECH_KEY ?? ''}` }
-    })
+    const url = new URL('https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest')
+    url.searchParams.set('q', query)
+    url.searchParams.set('fq', 'type:adres')
+    url.searchParams.set('rows', '6')
+
+    const res = await fetch(url.toString())
     if (!res.ok) return []
+
     const data = await res.json()
-    if (!data) return []
-    return [{
-      postcode: data.postcode,
-      street: data.street,
-      city: data.city,
-      label: `${data.street}, ${data.city} (${data.postcode})`,
-    }]
+    const docs: PdokDoc[] = data?.response?.docs ?? []
+
+    return docs
+      .map(doc => {
+        const coords = parseCentroide(doc.centroide_ll ?? '')
+        if (!coords) return null
+        return {
+          label: doc.weergavenaam,
+          address: doc.weergavenaam,
+          lat: coords.lat,
+          lng: coords.lng,
+        }
+      })
+      .filter((s): s is Suggestion => s !== null)
   } catch {
     return []
   }
@@ -41,34 +64,36 @@ export default function AddressInput() {
   const { t } = useLocale()
   const router = useRouter()
   const [query, setQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<PostcodeSuggestion[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [selected, setSelected] = useState<Suggestion | null>(null)
   const [loading, setLoading] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (!query || selected) return
+    if (!query || selected) { setSuggestions([]); return }
 
     debounceRef.current = setTimeout(async () => {
-      const results = await fetchPostcodeSuggestions(query)
+      const results = await fetchSuggestions(query)
       setSuggestions(results)
-    }, 300)
+    }, 250)
   }, [query, selected])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const address = selected ?? query
+    const address = selected?.address ?? query
     if (!address.trim()) return
 
     setLoading(true)
-    // Navigate to profile page with address in query string
-    router.push(`/profile?address=${encodeURIComponent(address)}`)
+    const params = new URLSearchParams({ address })
+    if (selected?.lat) params.set('lat', String(selected.lat))
+    if (selected?.lng) params.set('lng', String(selected.lng))
+    router.push(`/profile?${params.toString()}`)
   }
 
-  function handleSelect(s: PostcodeSuggestion) {
-    setSelected(`${s.postcode} ${s.street}`)
-    setQuery(`${s.street}, ${s.city} (${s.postcode})`)
+  function handleSelect(s: Suggestion) {
+    setSelected(s)
+    setQuery(s.label)
     setSuggestions([])
   }
 

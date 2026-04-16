@@ -4,6 +4,10 @@ import type { HomeProfile } from '@/types/home-profile'
 
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get('address')
+  // lat/lng may be passed directly from PDOK autocomplete — skips geocoding step
+  const latParam = req.nextUrl.searchParams.get('lat')
+  const lngParam = req.nextUrl.searchParams.get('lng')
+
   if (!address) {
     return NextResponse.json({ error: 'address parameter required' }, { status: 400 })
   }
@@ -11,6 +15,12 @@ export async function GET(req: NextRequest) {
   try {
     // 1. Fetch building data (BAG)
     const buildingData = await nlAdapter.fetchBuildingData(address)
+
+    // Override coordinates with PDOK values if provided — more accurate than BAG mock
+    if (latParam && lngParam) {
+      buildingData.lat = parseFloat(latParam)
+      buildingData.lng = parseFloat(lngParam)
+    }
 
     // 2. Fetch energy label (EP-online)
     const { label, registered } = await nlAdapter.fetchEnergyLabel(buildingData.bagId ?? '')
