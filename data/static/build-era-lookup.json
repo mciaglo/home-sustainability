@@ -1,0 +1,62 @@
+{
+  "_source": "NTA 8800 / RVO build era insulation inference table",
+  "_updated": "2025-01",
+  "eras": [
+    {
+      "id": "pre-1920",
+      "yearFrom": 0,
+      "yearTo": 1919,
+      "insulation": { "wall": "none", "roof": "none", "floor": "none", "glazing": "none" },
+      "glazingType": "single",
+      "typicalHeating": "gas-boiler"
+    },
+    {
+      "id": "1920-1945",
+      "yearFrom": 1920,
+      "yearTo": 1945,
+      "insulation": { "wall": "none", "roof": "none", "floor": "none", "glazing": "none" },
+      "glazingType": "single",
+      "typicalHeating": "gas-boiler"
+    },
+    {
+      "id": "1946-1974",
+      "yearFrom": 1946,
+      "yearTo": 1974,
+      "insulation": { "wall": "partial", "roof": "partial", "floor": "none", "glazing": "none" },
+      "glazingType": "old-double",
+      "typicalHeating": "gas-boiler"
+    },
+    {
+      "id": "1975-1991",
+      "yearFrom": 1975,
+      "yearTo": 1991,
+      "insulation": { "wall": "partial", "roof": "partial", "floor": "partial", "glazing": "partial" },
+      "glazingType": "double",
+      "typicalHeating": "gas-boiler"
+    },
+    {
+      "id": "1992-2005",
+      "yearFrom": 1992,
+      "yearTo": 2005,
+      "insulation": { "wall": "good", "roof": "good", "floor": "good", "glazing": "good" },
+      "glazingType": "hr-plus-plus",
+      "typicalHeating": "gas-boiler"
+    },
+    {
+      "id": "2006-2014",
+      "yearFrom": 2006,
+      "yearTo": 2014,
+      "insulation": { "wall": "good", "roof": "good", "floor": "good", "glazing": "good" },
+      "glazingType": "hr-plus-plus",
+      "typicalHeating": "gas-boiler"
+    },
+    {
+      "id": "2015+",
+      "yearFrom": 2015,
+      "yearTo": 9999,
+      "insulation": { "wall": "very-good", "roof": "very-good", "floor": "very-good", "glazing": "very-good" },
+      "glazingType": "triple",
+      "typicalHeating": "heat-pump-air"
+    }
+  ]
+}

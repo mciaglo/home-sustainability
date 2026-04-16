@@ -1,0 +1,70 @@
+{
+  "_source": "RVO / ISDE",
+  "_updated": "2025-01",
+  "_note": "Updated monthly by cron. Amounts in € per household unless noted.",
+  "subsidies": [
+    {
+      "id": "isde-warmtepomp-lucht",
+      "name": "ISDE warmtepomp (lucht-water)",
+      "amount": 3750,
+      "upgradeIds": ["heat-pump-air"],
+      "deadline": "Oktober (budget afhankelijk)",
+      "url": "https://www.rvo.nl/subsidies-financiering/isde",
+      "conditions": "Woningen gebouwd voor 2021"
+    },
+    {
+      "id": "isde-warmtepomp-bodem",
+      "name": "ISDE warmtepomp (bodem-water)",
+      "amount": 5250,
+      "upgradeIds": ["heat-pump-ground"],
+      "deadline": "Oktober (budget afhankelijk)",
+      "url": "https://www.rvo.nl/subsidies-financiering/isde",
+      "conditions": "Woningen gebouwd voor 2021"
+    },
+    {
+      "id": "isde-isolatie-dak",
+      "name": "ISDE dakisolatie",
+      "amount": 800,
+      "upgradeIds": ["roof-insulation"],
+      "deadline": null,
+      "url": "https://www.rvo.nl/subsidies-financiering/isde",
+      "conditions": "Minimaal Rc 3.5"
+    },
+    {
+      "id": "isde-isolatie-gevel",
+      "name": "ISDE gevelisolatie",
+      "amount": 700,
+      "upgradeIds": ["cavity-wall-insulation", "external-wall-insulation"],
+      "deadline": null,
+      "url": "https://www.rvo.nl/subsidies-financiering/isde",
+      "conditions": "Minimaal Rc 2.9"
+    },
+    {
+      "id": "isde-isolatie-vloer",
+      "name": "ISDE vloerisolatie",
+      "amount": 600,
+      "upgradeIds": ["floor-insulation"],
+      "deadline": null,
+      "url": "https://www.rvo.nl/subsidies-financiering/isde",
+      "conditions": "Minimaal Rc 2.9"
+    },
+    {
+      "id": "isde-glas",
+      "name": "ISDE isolatieglas",
+      "amount": 500,
+      "upgradeIds": ["hr-plus-plus-glazing", "triple-glazing"],
+      "deadline": null,
+      "url": "https://www.rvo.nl/subsidies-financiering/isde",
+      "conditions": "Minimaal HR++ (U ≤ 1.2)"
+    },
+    {
+      "id": "salderingsregeling",
+      "name": "Salderingsregeling zonnepanelen",
+      "amount": 0,
+      "upgradeIds": ["solar-panels"],
+      "deadline": "Afbouw gepland na 2025",
+      "url": "https://www.rvo.nl/onderwerpen/saldering",
+      "conditions": "Nettometing via energieleverancier"
+    }
+  ]
+}

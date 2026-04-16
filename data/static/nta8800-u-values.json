@@ -1,0 +1,20 @@
+{
+  "_source": "RVO NTA 8800 reference tables",
+  "_updated": "2025-01",
+  "reference": {
+    "pre-1945":  { "wall": 1.8, "roof": 2.0, "floor": 1.5, "glazing": 5.8 },
+    "1945-1974": { "wall": 1.5, "roof": 1.8, "floor": 1.2, "glazing": 5.8 },
+    "1975-1991": { "wall": 0.8, "roof": 0.5, "floor": 0.7, "glazing": 2.9 },
+    "1992-2005": { "wall": 0.4, "roof": 0.4, "floor": 0.4, "glazing": 2.9 },
+    "2006-2014": { "wall": 0.28, "roof": 0.25, "floor": 0.28, "glazing": 1.2 },
+    "2015+":     { "wall": 0.22, "roof": 0.20, "floor": 0.22, "glazing": 0.7 }
+  },
+  "targets": {
+    "cavity-wall-insulation":    { "wall": 0.35, "standard": "Rc 2.9" },
+    "external-wall-insulation":  { "wall": 0.22, "standard": "Rc 4.5" },
+    "roof-insulation":           { "roof": 0.20, "standard": "Rc 5.0" },
+    "floor-insulation":          { "floor": 0.22, "standard": "Rc 4.5" },
+    "hr-plus-plus-glazing":      { "glazing": 1.2, "standard": "HR++" },
+    "triple-glazing":            { "glazing": 0.7, "standard": "Triple" }
+  }
+}

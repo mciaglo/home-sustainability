@@ -1,0 +1,13 @@
+{
+  "_source": "CE Delft / PBL Klimaat- en Energieverkenning",
+  "_updated": "2025-01",
+  "_note": "Updated monthly by cron. Grid factor declines as renewables expand.",
+  "gasKgCo2PerM3": 1.884,
+  "gridFactorCurve": [
+    { "year": 2025, "kgCo2PerKwh": 0.45 },
+    { "year": 2027, "kgCo2PerKwh": 0.38 },
+    { "year": 2030, "kgCo2PerKwh": 0.28 },
+    { "year": 2033, "kgCo2PerKwh": 0.18 },
+    { "year": 2035, "kgCo2PerKwh": 0.10 }
+  ]
+}

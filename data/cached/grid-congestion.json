@@ -1,0 +1,10 @@
+{
+  "_source": "Netbeheer Nederland open data portal",
+  "_updated": "2025-01",
+  "_note": "Updated monthly by cron. Postcodes with confirmed grid congestion for new heat pump connections.",
+  "affectedPostcodes": [
+    "1012", "1013", "1014", "1015",
+    "2500", "2501", "2502",
+    "3011", "3012"
+  ]
+}

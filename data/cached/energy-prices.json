@@ -1,0 +1,9 @@
+{
+  "_source": "CBS Statline",
+  "_updated": "2025-01",
+  "_note": "Updated weekly by cron. Prices in €/unit incl. tax for average household.",
+  "gasEuroPerM3": 1.28,
+  "electricityEuroPerKwh": 0.32,
+  "peak2022GasEuroPerM3": 1.85,
+  "conservativeMultiplier": 0.8
+}

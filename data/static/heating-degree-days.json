@@ -1,0 +1,20 @@
+{
+  "_source": "KNMI klimaatdata",
+  "_updated": "2025-01",
+  "_note": "Heating degree days (HDD) base 18°C, annual average by region",
+  "national_average": 2800,
+  "regions": {
+    "Groningen":    2950,
+    "Friesland":    2900,
+    "Drenthe":      2880,
+    "Overijssel":   2820,
+    "Flevoland":    2750,
+    "Gelderland":   2780,
+    "Utrecht":      2720,
+    "Noord-Holland": 2650,
+    "Zuid-Holland":  2620,
+    "Zeeland":      2550,
+    "Noord-Brabant": 2700,
+    "Limburg":      2680
+  }
+}

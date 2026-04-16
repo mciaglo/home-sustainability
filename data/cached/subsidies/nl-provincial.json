@@ -1,0 +1,37 @@
+{
+  "_source": "RVO + provinciale regelingen",
+  "_updated": "2025-01",
+  "_note": "Updated manually ~2x per year. Provincial and municipal top-ups on national subsidies.",
+  "provinces": {
+    "Noord-Holland": {
+      "provincial": [],
+      "municipal": {
+        "Amsterdam": [
+          {
+            "id": "ams-duurzaamheidslening",
+            "name": "Amsterdamse Duurzaamheidslening",
+            "amount": 0,
+            "upgradeIds": ["cavity-wall-insulation", "roof-insulation", "floor-insulation", "hr-plus-plus-glazing", "heat-pump-air"],
+            "deadline": null,
+            "url": "https://www.amsterdam.nl/wonen-leefomgeving/duurzaamheid/subsidies-regelingen/",
+            "conditions": "Renteloze lening tot €25.000"
+          }
+        ],
+        "Haarlem": []
+      }
+    },
+    "Zuid-Holland": {
+      "provincial": [],
+      "municipal": {
+        "Rotterdam": [],
+        "Den Haag": []
+      }
+    },
+    "Utrecht": {
+      "provincial": [],
+      "municipal": {
+        "Utrecht": []
+      }
+    }
+  }
+}
