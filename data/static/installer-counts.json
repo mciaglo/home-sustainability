@@ -1,0 +1,19 @@
+{
+  "_source": "Google Places API text search: 'warmtepomp installateur {province}', filtered to 4+ stars",
+  "_updated": "2026-04",
+  "_note": "Google returns max 20 per page; actual counts are likely higher. Update quarterly.",
+  "provinces": {
+    "Groningen": 13,
+    "Friesland": 18,
+    "Drenthe": 17,
+    "Overijssel": 19,
+    "Gelderland": 18,
+    "Utrecht": 17,
+    "Noord-Holland": 20,
+    "Zuid-Holland": 19,
+    "Zeeland": 17,
+    "Noord-Brabant": 19,
+    "Limburg": 19,
+    "Flevoland": 19
+  }
+}
