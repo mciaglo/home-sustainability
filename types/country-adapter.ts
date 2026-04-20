@@ -17,9 +17,18 @@ export interface BuildingData {
   houseNumber: string
 }
 
+export interface AddressHints {
+  bagVboId?: string
+  lat?: number
+  lng?: number
+  postcode?: string
+  province?: string
+  city?: string
+}
+
 export interface CountryAdapter {
   countryCode: string // 'NL' | 'DE' | 'FR' | 'BE'
-  fetchBuildingData(address: string): Promise<BuildingData>
+  fetchBuildingData(address: string, hints?: AddressHints): Promise<BuildingData>
   fetchEnergyLabel(bagId: string): Promise<{ label: EnergyLabel; registered: boolean }>
   fetchNeighbourLabel(postcode: string): Promise<EnergyLabel | null>
   fetchGridCongestion(postcode: string): Promise<boolean>

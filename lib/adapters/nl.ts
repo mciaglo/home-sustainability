@@ -1,9 +1,4 @@
-/**
- * Netherlands country adapter.
- * In v1, BAG and EP-online calls return mock data.
- * Replace the mock sections with real API calls once keys are available.
- */
-import type { CountryAdapter, BuildingData } from '@/types/country-adapter'
+import type { CountryAdapter, BuildingData, AddressHints } from '@/types/country-adapter'
 import type { HomeProfile, EnergyLabel, InsulationLevel, HeatingType } from '@/types/home-profile'
 import buildEraData from '@/data/static/build-era-lookup.json'
 import energyPrices from '@/data/cached/energy-prices.json'
@@ -42,32 +37,93 @@ function estimateEnergyCost(yearBuilt: number, floorArea: number): { gasM3: numb
   return { gasM3, kWh, cost }
 }
 
-// ---------------------------------------------------------------------------
-// MOCK — replace with real BAG API call
-// ---------------------------------------------------------------------------
-async function mockFetchBAG(postcode: string, houseNumber: string): Promise<BuildingData> {
-  return {
-    bagId: `mock-${postcode}-${houseNumber}`,
-    yearBuilt: 1975,
-    floorArea: 112,
-    buildingType: 'terraced',
-    isMonument: false,
-    isVvE: false,
-    lat: 52.3702,
-    lng: 4.8952,
-    postcode,
-    city: 'Amsterdam',
-    street: 'Voorbeeldstraat',
-    houseNumber,
-  }
+interface BagWfsProperties {
+  identificatie: string
+  oppervlakte: number
+  status: string
+  gebruiksdoel: string
+  openbare_ruimte: string
+  huisnummer: number
+  huisletter: string
+  toevoeging: string
+  postcode: string
+  woonplaats: string
+  bouwjaar: number
+  pandidentificatie: string
+  pandstatus: string
 }
 
-// ---------------------------------------------------------------------------
-// MOCK — replace with real EP-online API call
-// ---------------------------------------------------------------------------
-async function mockFetchEPOnline(bagId: string): Promise<{ label: EnergyLabel; registered: boolean }> {
-  void bagId
-  return { label: 'E', registered: true }
+function inferBuildingType(gebruiksdoel: string, oppervlakte: number): string {
+  if (gebruiksdoel.includes('woonfunctie')) {
+    if (oppervlakte < 80) return 'apartment'
+    if (oppervlakte > 200) return 'detached'
+    return 'terraced'
+  }
+  return 'detached'
+}
+
+async function fetchBAG(vboId: string): Promise<BagWfsProperties | null> {
+  const filter = `<Filter><PropertyIsEqualTo><PropertyName>identificatie</PropertyName><Literal>${vboId}</Literal></PropertyIsEqualTo></Filter>`
+  const url = new URL('https://service.pdok.nl/lv/bag/wfs/v2_0')
+  url.searchParams.set('service', 'WFS')
+  url.searchParams.set('version', '2.0.0')
+  url.searchParams.set('request', 'GetFeature')
+  url.searchParams.set('typeName', 'bag:verblijfsobject')
+  url.searchParams.set('outputFormat', 'application/json')
+  url.searchParams.set('count', '1')
+  url.searchParams.set('Filter', filter)
+
+  const res = await fetch(url.toString())
+  if (!res.ok) return null
+
+  const data = await res.json()
+  const feature = data?.features?.[0]
+  return feature?.properties ?? null
+}
+
+interface EpOnlineResult {
+  Energieklasse?: string
+  Gebouwtype?: string
+  Gebouwsubtype?: string
+  Gebouwklasse?: string
+  Gebruiksoppervlakte_thermische_zone?: number
+  Energiebehoefte?: number
+  PrimaireFossieleEnergie?: number
+  Aandeel_hernieuwbare_energie?: number
+  BerekendeCO2Emissie?: number
+  BerekendeEnergieverbruik?: number
+}
+
+function parseEnergyLabel(klasse: string | undefined): EnergyLabel {
+  if (!klasse) return 'unknown'
+  const normalized = klasse.trim().toUpperCase()
+  const valid: EnergyLabel[] = ['A+++', 'A++', 'A+', 'A', 'B', 'C', 'D', 'E', 'F', 'G']
+  return valid.includes(normalized as EnergyLabel) ? (normalized as EnergyLabel) : 'unknown'
+}
+
+async function fetchEPOnline(bagVboId: string): Promise<{ label: EnergyLabel; registered: boolean; epData?: EpOnlineResult }> {
+  const apiKey = process.env.RVO_API_KEY
+  if (!apiKey) return { label: 'unknown', registered: false }
+
+  try {
+    const res = await fetch(
+      `https://public.ep-online.nl/api/v5/PandEnergielabel/AdresseerbaarObject/${bagVboId}`,
+      { headers: { 'Authorization': apiKey } }
+    )
+    if (!res.ok) return { label: 'unknown', registered: false }
+
+    const data: EpOnlineResult[] = await res.json()
+    if (!data.length) return { label: 'unknown', registered: false }
+
+    const latest = data[0]
+    return {
+      label: parseEnergyLabel(latest.Energieklasse),
+      registered: true,
+      epData: latest,
+    }
+  } catch {
+    return { label: 'unknown', registered: false }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -78,19 +134,95 @@ async function mockFetchNeighbourLabel(postcode: string): Promise<EnergyLabel | 
   return 'D'
 }
 
+const LABEL_RANK: Record<string, number> = {
+  'A+++': 10, 'A++': 9, 'A+': 8, 'A': 7, 'B': 6, 'C': 5, 'D': 4, 'E': 3, 'F': 2, 'G': 1, 'unknown': 0,
+}
+
+function expectedLabelForEra(yearBuilt: number): number {
+  if (yearBuilt < 1946) return LABEL_RANK['F']
+  if (yearBuilt < 1975) return LABEL_RANK['E']
+  if (yearBuilt < 1992) return LABEL_RANK['D']
+  if (yearBuilt < 2006) return LABEL_RANK['C']
+  if (yearBuilt < 2015) return LABEL_RANK['B']
+  return LABEL_RANK['A']
+}
+
+function upgradeLevel(level: InsulationLevel): InsulationLevel {
+  if (level === 'none') return 'partial'
+  if (level === 'partial') return 'good'
+  if (level === 'good') return 'very-good'
+  return level
+}
+
+function adjustInsulationForLabel(
+  eraInsulation: { wall: InsulationLevel; roof: InsulationLevel; floor: InsulationLevel; glazing: InsulationLevel },
+  label: EnergyLabel,
+  yearBuilt: number,
+): { wall: InsulationLevel; roof: InsulationLevel; floor: InsulationLevel; glazing: InsulationLevel } {
+  const actual = LABEL_RANK[label] ?? 0
+  const expected = expectedLabelForEra(yearBuilt)
+  const gap = actual - expected
+
+  if (gap <= 0) return eraInsulation
+
+  const result = { ...eraInsulation }
+  // Each label step above expected implies ~1 insulation element was upgraded
+  const elements: (keyof typeof result)[] = ['wall', 'roof', 'glazing', 'floor']
+  for (let i = 0; i < Math.min(gap, elements.length); i++) {
+    result[elements[i]] = upgradeLevel(result[elements[i]])
+  }
+  return result
+}
+
+function inferHeatingType(eraHeating: HeatingType, label: EnergyLabel): HeatingType {
+  const rank = LABEL_RANK[label] ?? 0
+  if (rank >= LABEL_RANK['A'] && eraHeating === 'gas-boiler') return 'heat-pump-air'
+  return eraHeating
+}
+
 export const nlAdapter: CountryAdapter = {
   countryCode: 'NL',
 
-  async fetchBuildingData(address: string): Promise<BuildingData> {
-    // Parse postcode + house number from address string
-    const match = address.match(/^(\d{4}\s?[A-Z]{2})\s+(\d+.*)$/i)
-    const postcode = match?.[1]?.replace(/\s/, '') ?? '1000AA'
-    const houseNumber = match?.[2] ?? '1'
-    return mockFetchBAG(postcode, houseNumber)
+  async fetchBuildingData(address: string, hints?: AddressHints): Promise<BuildingData> {
+    if (hints?.bagVboId) {
+      const bag = await fetchBAG(hints.bagVboId)
+      if (bag) {
+        return {
+          bagId: bag.identificatie,
+          yearBuilt: bag.bouwjaar,
+          floorArea: bag.oppervlakte,
+          buildingType: inferBuildingType(bag.gebruiksdoel, bag.oppervlakte),
+          isMonument: false,
+          isVvE: bag.gebruiksdoel.includes('woonfunctie') && bag.oppervlakte < 60,
+          lat: hints.lat ?? 0,
+          lng: hints.lng ?? 0,
+          postcode: hints.postcode ?? bag.postcode,
+          city: hints.city ?? bag.woonplaats,
+          street: bag.openbare_ruimte,
+          houseNumber: String(bag.huisnummer) + bag.huisletter + (bag.toevoeging ? `-${bag.toevoeging}` : ''),
+        }
+      }
+    }
+
+    // Fallback: no BAG data available
+    return {
+      bagId: undefined,
+      yearBuilt: 1975,
+      floorArea: 100,
+      buildingType: 'terraced',
+      isMonument: false,
+      isVvE: false,
+      lat: hints?.lat ?? 0,
+      lng: hints?.lng ?? 0,
+      postcode: hints?.postcode ?? '',
+      city: hints?.city ?? '',
+      street: address,
+      houseNumber: '',
+    }
   },
 
   async fetchEnergyLabel(bagId: string) {
-    return mockFetchEPOnline(bagId)
+    return fetchEPOnline(bagId)
   },
 
   async fetchNeighbourLabel(postcode: string) {
@@ -110,6 +242,16 @@ export const nlAdapter: CountryAdapter = {
     const era = getEraForYear(buildingData.yearBuilt)
     const energy = estimateEnergyCost(buildingData.yearBuilt, buildingData.floorArea)
 
+    const eraInsulation = era?.insulation ?? {
+      wall: 'unknown' as InsulationLevel, roof: 'unknown' as InsulationLevel,
+      floor: 'unknown' as InsulationLevel, glazing: 'unknown' as InsulationLevel,
+    }
+
+    // If the energy label is better than expected for the build era, infer upgrades were done
+    const insulation = adjustInsulationForLabel(eraInsulation, energyLabel, buildingData.yearBuilt)
+
+    const heatingType = inferHeatingType(era?.typicalHeating ?? 'unknown', energyLabel)
+
     return {
       bagId: buildingData.bagId,
       yearBuilt: buildingData.yearBuilt,
@@ -123,10 +265,8 @@ export const nlAdapter: CountryAdapter = {
       city: buildingData.city,
       energyLabel,
       energyLabelRegistered: true,
-      insulation: era?.insulation ?? {
-        wall: 'unknown', roof: 'unknown', floor: 'unknown', glazing: 'unknown',
-      },
-      heatingType: era?.typicalHeating ?? 'unknown',
+      insulation,
+      heatingType,
       estimatedGasM3PerYear: energy.gasM3,
       estimatedElectricityKwhPerYear: energy.kWh,
       estimatedEnergyCostPerYear: energy.cost,

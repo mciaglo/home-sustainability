@@ -14,12 +14,7 @@ interface Synergy {
 
 const DEPENDENCIES: Dependency[] = [
   {
-    upgradeId: 'heat-pump-air',
-    requiredBefore: ['cavity-wall-insulation', 'external-wall-insulation', 'roof-insulation'],
-    reason: 'Een warmtepomp werkt aanzienlijk minder goed zonder voldoende isolatie. Overweeg eerst te isoleren.',
-  },
-  {
-    upgradeId: 'heat-pump-ground',
+    upgradeId: 'heat-pump',
     requiredBefore: ['cavity-wall-insulation', 'external-wall-insulation', 'roof-insulation'],
     reason: 'Een warmtepomp werkt aanzienlijk minder goed zonder voldoende isolatie. Overweeg eerst te isoleren.',
   },
@@ -37,7 +32,7 @@ const SYNERGIES: Synergy[] = [
     reason: 'Spouwmuur + dak in één project bespaart ~10% op arbeidskosten.',
   },
   {
-    upgradeIds: ['heat-pump-air', 'solar-panels'],
+    upgradeIds: ['heat-pump', 'solar-panels'],
     savingPercent: 0,
     reason: 'Zonnepanelen dekken een deel van het stroomverbruik van de warmtepomp — goede combinatie.',
   },

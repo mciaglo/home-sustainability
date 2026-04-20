@@ -5,13 +5,18 @@ export type UpgradeId =
   | 'external-wall-insulation'
   | 'roof-insulation'
   | 'floor-insulation'
-  | 'hr-plus-plus-glazing'
-  | 'triple-glazing'
+  | 'glazing'
   | 'solar-panels'
-  | 'heat-pump-air'
-  | 'heat-pump-ground'
+  | 'heat-pump'
   | 'mechanical-ventilation'
   | 'hot-water-heat-pump'
+  | 'home-battery'
+
+export type LegacyUpgradeId =
+  | 'hr-plus-plus-glazing'
+  | 'triple-glazing'
+  | 'heat-pump-air'
+  | 'heat-pump-ground'
 
 export type UpgradeTag =
   | 'top-pick'
@@ -21,7 +26,38 @@ export type UpgradeTag =
   | 'long-game'
   | 'comfort-boost'
 
-export type PriceScenario = 'current' | 'peak2022' | 'conservative'
+export type PriceScenario = 'current' | 'peak2022' | 'conservative' | 'contract'
+
+export interface TierDefinition {
+  tierId: string
+  labelNl: string
+  labelEn: string
+  params: Record<string, number>
+  costMultiplier: number
+  legacyId?: LegacyUpgradeId | UpgradeId
+}
+
+export interface TierResult {
+  tierId: string
+  labelNl: string
+  labelEn: string
+  costMin: number
+  costMax: number
+  subsidies: Subsidy[]
+  netCostMin: number
+  netCostMax: number
+  monthlySaving: number
+  annualSaving: number
+  paybackYears: number
+  paidOffYear: number
+  totalReturn: number
+  freeSavingsYears: number
+  co2SavedTonnesPerYear: number
+  co2TreesEquivalent: number
+  gasReductionPercent: number
+  electricitySelfProducedPercent: number
+  epcDelta: number
+}
 
 export interface Subsidy {
   name: string
@@ -37,6 +73,7 @@ export interface UpgradeResult {
 
   // Personalised description
   description: string
+  descriptionEn: string
 
   // Financials
   costMin: number // € gross
@@ -54,7 +91,7 @@ export interface UpgradeResult {
 
   // CO₂
   co2SavedTonnesPerYear: number
-  co2DrivingKmEquivalent: number // km/yr
+  co2TreesEquivalent: number
 
   // Energy independence
   gasReductionPercent: number
@@ -71,6 +108,12 @@ export interface UpgradeResult {
   requiresBefore?: UpgradeId[] // must do these first
   benefitsFrom?: { upgradeId: UpgradeId; saving: string }[]
   blockedForVvE: boolean
+
+  // Tiers
+  tiers?: TierResult[]
+  selectedTierId?: string
+  tierInfoNl?: string
+  tierInfoEn?: string
 
   // Confidence
   dataSource: 'ep-online' | 'build-era-lookup' | 'user-override' | 'energy-bill'
@@ -92,4 +135,5 @@ export interface UpgradeDefinition {
   difficulty: 'diy' | 'professional'
   installDays: string
   requiresExteriorAccess: boolean
+  tiers?: TierDefinition[]
 }

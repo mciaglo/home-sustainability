@@ -4,9 +4,12 @@ import type { HomeProfile } from '@/types/home-profile'
 
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get('address')
-  // lat/lng may be passed directly from PDOK autocomplete — skips geocoding step
   const latParam = req.nextUrl.searchParams.get('lat')
   const lngParam = req.nextUrl.searchParams.get('lng')
+  const bagVboId = req.nextUrl.searchParams.get('bagVboId')
+  const postcode = req.nextUrl.searchParams.get('postcode')
+  const province = req.nextUrl.searchParams.get('province')
+  const city = req.nextUrl.searchParams.get('city')
 
   if (!address) {
     return NextResponse.json({ error: 'address parameter required' }, { status: 400 })
@@ -14,16 +17,18 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. Fetch building data (BAG)
-    const buildingData = await nlAdapter.fetchBuildingData(address)
+    const buildingData = await nlAdapter.fetchBuildingData(address, {
+      bagVboId: bagVboId ?? undefined,
+      lat: latParam ? parseFloat(latParam) : undefined,
+      lng: lngParam ? parseFloat(lngParam) : undefined,
+      postcode: postcode ?? undefined,
+      province: province ?? undefined,
+      city: city ?? undefined,
+    })
 
-    // Override coordinates with PDOK values if provided — more accurate than BAG mock
-    if (latParam && lngParam) {
-      buildingData.lat = parseFloat(latParam)
-      buildingData.lng = parseFloat(lngParam)
-    }
-
-    // 2. Fetch energy label (EP-online)
-    const { label, registered } = await nlAdapter.fetchEnergyLabel(buildingData.bagId ?? '')
+    // 2. Fetch energy label (EP-online) — use bagVboId directly if available, fall back to bagId from BAG
+    const epId = bagVboId ?? buildingData.bagId ?? ''
+    const { label, registered } = await nlAdapter.fetchEnergyLabel(epId)
 
     // 3. Build base profile
     const baseProfile = nlAdapter.buildProfile(buildingData, label)
@@ -38,8 +43,10 @@ export async function GET(req: NextRequest) {
       ...baseProfile,
       address,
       energyLabelRegistered: registered,
+      dataSource: registered ? 'ep-online' : 'build-era-lookup',
       postcodeAverageLabel: neighbourLabel ?? undefined,
       hasGridCongestion,
+      province: province ?? undefined,
     }
 
     return NextResponse.json({ profile })

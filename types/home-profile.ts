@@ -20,6 +20,7 @@ export interface HomeProfile {
   address: string
   postcode: string
   city: string
+  province?: string
   lat: number
   lng: number
 
@@ -52,6 +53,10 @@ export interface HomeProfile {
 
   // Grid
   hasGridCongestion: boolean
+
+  // Energy contract
+  contractGasEuroPerM3?: number
+  contractElectricityEuroPerKwh?: number
 
   // Data confidence
   dataSource: DataSource

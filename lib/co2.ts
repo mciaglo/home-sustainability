@@ -56,3 +56,8 @@ export function electricityCo2SavedTonnesLifetime(
 export function co2ToDrivingKm(tonnesPerYear: number): number {
   return Math.round((tonnesPerYear * 1000) / DRIVING_CO2_KG_PER_KM)
 }
+
+/** Convert tonnes CO₂/year to equivalent trees planted (~21 kg CO₂/tree/year, EPA) */
+export function co2ToTrees(tonnesPerYear: number): number {
+  return Math.round((tonnesPerYear * 1000) / 21)
+}

@@ -9,6 +9,13 @@ interface Suggestion {
   address: string
   lat: number
   lng: number
+  bagVerblijfsobjectId: string | null
+  nummeraanduidingId: string | null
+  postcode: string | null
+  province: string | null
+  city: string | null
+  street: string | null
+  houseNumber: string | null
 }
 
 export default function AddressInput() {
@@ -43,6 +50,10 @@ export default function AddressInput() {
     const params = new URLSearchParams({ address })
     if (selected?.lat) params.set('lat', String(selected.lat))
     if (selected?.lng) params.set('lng', String(selected.lng))
+    if (selected?.bagVerblijfsobjectId) params.set('bagVboId', selected.bagVerblijfsobjectId)
+    if (selected?.postcode) params.set('postcode', selected.postcode)
+    if (selected?.province) params.set('province', selected.province)
+    if (selected?.city) params.set('city', selected.city)
     router.push(`/profile?${params.toString()}`)
   }
 

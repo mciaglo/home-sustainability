@@ -89,6 +89,8 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
   const [billUploaded, setBillUploaded] = useState(false)
   const [actualGas, setActualGas] = useState<number | null>(null)
   const [actualKwh, setActualKwh] = useState<number | null>(null)
+  const [contractGas, setContractGas] = useState<string>(initial.contractGasEuroPerM3?.toString() ?? '')
+  const [contractElectricity, setContractElectricity] = useState<string>(initial.contractElectricityEuroPerKwh?.toString() ?? '')
 
   const isMonument = initial.isMonument ?? false
   const isVvE = initial.isVvE ?? false
@@ -125,6 +127,8 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
       hasUploadedBill: billUploaded,
       estimatedGasM3PerYear: actualGas ?? initial.estimatedGasM3PerYear ?? 1500,
       estimatedElectricityKwhPerYear: actualKwh ?? initial.estimatedElectricityKwhPerYear ?? 3200,
+      contractGasEuroPerM3: contractGas ? parseFloat(contractGas) : undefined,
+      contractElectricityEuroPerKwh: contractElectricity ? parseFloat(contractElectricity) : undefined,
     }
 
     // Store in sessionStorage and navigate to results
@@ -253,8 +257,56 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
         </div>
       </div>
 
-      {/* Energy bill upload */}
-      <div className="bg-stone-50 rounded-2xl border border-dashed border-stone-300 p-5 space-y-3">
+      {/* Energy data */}
+      <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">
+          {locale === 'nl' ? 'Energiegegevens' : 'Energy data'}
+        </h2>
+
+        {/* Contract prices */}
+        <div>
+          <p className="text-sm font-medium text-stone-700">
+            {locale === 'nl' ? 'Huidig energiecontract' : 'Current energy contract'}
+          </p>
+          <p className="text-xs text-stone-400 mt-0.5 mb-3">
+            {locale === 'nl'
+              ? 'Optioneel — voor nauwkeurigere besparingsberekeningen'
+              : 'Optional — for more accurate savings calculations'}
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label={locale === 'nl' ? 'Gasprijs (€/m³)' : 'Gas price (€/m³)'}>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="1.45"
+                value={contractGas}
+                onChange={e => setContractGas(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
+              />
+            </Field>
+            <Field label={locale === 'nl' ? 'Stroomprijs (€/kWh)' : 'Electricity price (€/kWh)'}>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.40"
+                value={contractElectricity}
+                onChange={e => setContractElectricity(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
+              />
+            </Field>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <hr className="flex-1 border-stone-200" />
+          <span className="text-xs text-stone-400">{locale === 'nl' ? 'of' : 'or'}</span>
+          <hr className="flex-1 border-stone-200" />
+        </div>
+
+        {/* Bill upload */}
         <div>
           <p className="text-sm font-medium text-stone-700">{t('profile.uploadBill')}</p>
           <p className="text-xs text-stone-400 mt-0.5">{t('profile.uploadBillHint')}</p>
@@ -270,7 +322,7 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
             </span>
           </div>
         ) : (
-          <label className="inline-flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium text-stone-600 bg-white border border-stone-200 rounded-lg hover:border-stone-400 transition-colors">
+          <label className="inline-flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium text-stone-600 bg-stone-50 border border-stone-200 rounded-lg hover:border-stone-400 transition-colors">
             <span>📄</span>
             <span>{locale === 'nl' ? 'PDF selecteren' : 'Select PDF'}</span>
             <input

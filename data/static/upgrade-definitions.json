@@ -65,7 +65,14 @@
       "lifespanYears": 40,
       "difficulty": "professional",
       "installDays": "1–2 dagen",
-      "requiresExteriorAccess": false
+      "requiresExteriorAccess": false,
+      "tierInfoNl": "Rc-waarde = isolatieweerstand. Hoger is beter. Rc 2,5 is het minimum; Rc 4,0 is de gangbare keuze; Rc 6,0 is passivhuis-niveau.",
+      "tierInfoEn": "Rc value = insulation resistance. Higher is better. Rc 2.5 is the minimum; Rc 4.0 is the common choice; Rc 6.0 is passive house level.",
+      "tiers": [
+        { "tierId": "rc-2.5", "labelNl": "Rc 2,5", "labelEn": "Rc 2.5", "params": { "uValue": 0.40 }, "costMultiplier": 0.6 },
+        { "tierId": "rc-4.0", "labelNl": "Rc 4,0", "labelEn": "Rc 4.0", "params": { "uValue": 0.25 }, "costMultiplier": 1.0 },
+        { "tierId": "rc-6.0", "labelNl": "Rc 6,0", "labelEn": "Rc 6.0", "params": { "uValue": 0.17 }, "costMultiplier": 1.4 }
+      ]
     },
     {
       "id": "floor-insulation",
@@ -78,33 +85,33 @@
       "lifespanYears": 40,
       "difficulty": "professional",
       "installDays": "1–2 dagen",
-      "requiresExteriorAccess": false
+      "requiresExteriorAccess": false,
+      "tierInfoNl": "Rc-waarde = isolatieweerstand. Rc 2,5 is de basis; Rc 3,5 geeft merkbaar meer comfort en warmtebehoud.",
+      "tierInfoEn": "Rc value = insulation resistance. Rc 2.5 is the baseline; Rc 3.5 gives noticeably more comfort and heat retention.",
+      "tiers": [
+        { "tierId": "rc-2.5", "labelNl": "Rc 2,5", "labelEn": "Rc 2.5", "params": { "uValue": 0.40 }, "costMultiplier": 0.7 },
+        { "tierId": "rc-3.5", "labelNl": "Rc 3,5", "labelEn": "Rc 3.5", "params": { "uValue": 0.29 }, "costMultiplier": 1.0 }
+      ]
     },
     {
-      "id": "hr-plus-plus-glazing",
-      "nameNl": "HR++ glas",
-      "nameEn": "HR++ glazing",
-      "descriptionNl": "Hoog rendement dubbel glas met coating",
-      "descriptionEn": "High-performance double glazing with coating",
+      "id": "glazing",
+      "nameNl": "Isolatieglas",
+      "nameEn": "Glazing",
+      "descriptionNl": "Vervang enkel of oud dubbel glas door isolerend glas",
+      "descriptionEn": "Replace single or old double glazing with insulating glass",
       "costMinBase": 3000,
       "costMaxBase": 10000,
       "lifespanYears": 30,
       "difficulty": "professional",
       "installDays": "1–3 dagen",
-      "requiresExteriorAccess": true
-    },
-    {
-      "id": "triple-glazing",
-      "nameNl": "Drievoudig glas",
-      "nameEn": "Triple glazing",
-      "descriptionNl": "Drievoudig glas voor maximale isolatiewaarde",
-      "descriptionEn": "Triple glazing for maximum insulation",
-      "costMinBase": 5000,
-      "costMaxBase": 15000,
-      "lifespanYears": 30,
-      "difficulty": "professional",
-      "installDays": "1–3 dagen",
-      "requiresExteriorAccess": true
+      "requiresExteriorAccess": true,
+      "tierInfoNl": "HR++ is het standaard isolatieglas. Vacuümglas is dunner en past in bestaande kozijnen. Triple glas isoleert het best en dempt ook geluid.",
+      "tierInfoEn": "HR++ is the standard insulating glass. Vacuum glass is thinner and fits existing frames. Triple glazing insulates best and also reduces noise.",
+      "tiers": [
+        { "tierId": "hr-plus-plus", "labelNl": "HR++", "labelEn": "HR++", "params": { "uValue": 1.2 }, "costMultiplier": 1.0, "legacyId": "hr-plus-plus-glazing" },
+        { "tierId": "vacuum", "labelNl": "Vacuümglas", "labelEn": "Vacuum glass", "params": { "uValue": 0.5 }, "costMultiplier": 2.0, "legacyId": "triple-glazing" },
+        { "tierId": "triple", "labelNl": "Triple glas", "labelEn": "Triple glazing", "params": { "uValue": 0.7 }, "costMultiplier": 1.5, "legacyId": "triple-glazing" }
+      ]
     },
     {
       "id": "solar-panels",
@@ -117,33 +124,33 @@
       "lifespanYears": 25,
       "difficulty": "professional",
       "installDays": "1–2 dagen",
-      "requiresExteriorAccess": true
+      "requiresExteriorAccess": true,
+      "tierInfoNl": "Meer panelen = meer dekking van je stroomverbruik. 100% dekking betekent dat je op jaarbasis evenveel opwekt als je verbruikt.",
+      "tierInfoEn": "More panels = more of your electricity covered. 100% coverage means you generate as much as you use annually.",
+      "tiers": [
+        { "tierId": "50pct", "labelNl": "50% verbruik", "labelEn": "50% usage", "params": { "coveragePct": 0.5 }, "costMultiplier": 0.5 },
+        { "tierId": "75pct", "labelNl": "75% verbruik", "labelEn": "75% usage", "params": { "coveragePct": 0.75 }, "costMultiplier": 0.75 },
+        { "tierId": "100pct", "labelNl": "100% verbruik", "labelEn": "100% usage", "params": { "coveragePct": 1.0 }, "costMultiplier": 1.0 }
+      ]
     },
     {
-      "id": "heat-pump-air",
-      "nameNl": "Lucht-water warmtepomp",
-      "nameEn": "Air-source heat pump",
-      "descriptionNl": "Warmtepomp die warmte uit de buitenlucht haalt",
-      "descriptionEn": "Heat pump that extracts heat from outside air",
+      "id": "heat-pump",
+      "nameNl": "Warmtepomp",
+      "nameEn": "Heat pump",
+      "descriptionNl": "Warmtepomp voor centrale verwarming, vervangt de cv-ketel",
+      "descriptionEn": "Heat pump for central heating, replaces the gas boiler",
       "costMinBase": 8000,
       "costMaxBase": 18000,
       "lifespanYears": 20,
       "difficulty": "professional",
-      "installDays": "2–3 dagen",
-      "requiresExteriorAccess": true
-    },
-    {
-      "id": "heat-pump-ground",
-      "nameNl": "Bodem-water warmtepomp",
-      "nameEn": "Ground-source heat pump",
-      "descriptionNl": "Warmtepomp die warmte uit de bodem haalt via leidingen",
-      "descriptionEn": "Heat pump extracting heat from the ground via pipes",
-      "costMinBase": 18000,
-      "costMaxBase": 35000,
-      "lifespanYears": 25,
-      "difficulty": "professional",
-      "installDays": "3–5 dagen",
-      "requiresExteriorAccess": true
+      "installDays": "2–5 dagen",
+      "requiresExteriorAccess": true,
+      "tierInfoNl": "Lucht-water haalt warmte uit buitenlucht — goedkoper om te installeren. Bodem-water haalt warmte uit de grond — efficiënter maar vereist een boorput.",
+      "tierInfoEn": "Air-source extracts heat from outdoor air — cheaper to install. Ground-source extracts heat from the ground — more efficient but requires a borehole.",
+      "tiers": [
+        { "tierId": "air-source", "labelNl": "Lucht-water", "labelEn": "Air-source", "params": { "cop": 3.0 }, "costMultiplier": 1.0, "legacyId": "heat-pump-air" },
+        { "tierId": "ground-source", "labelNl": "Bodem-water", "labelEn": "Ground-source", "params": { "cop": 4.0 }, "costMultiplier": 2.0, "legacyId": "heat-pump-ground" }
+      ]
     },
     {
       "id": "hot-water-heat-pump",
@@ -157,6 +164,26 @@
       "difficulty": "professional",
       "installDays": "1 dag",
       "requiresExteriorAccess": false
+    },
+    {
+      "id": "home-battery",
+      "nameNl": "Thuisbatterij",
+      "nameEn": "Home battery",
+      "descriptionNl": "Sla zelf opgewekte zonne-energie op voor eigen gebruik 's avonds",
+      "descriptionEn": "Store self-generated solar energy for evening use",
+      "costMinBase": 4000,
+      "costMaxBase": 10000,
+      "lifespanYears": 15,
+      "difficulty": "professional",
+      "installDays": "1 dag",
+      "requiresExteriorAccess": false,
+      "tierInfoNl": "Grotere batterij = meer zonne-energie opslaan voor 's avonds. Kies op basis van het aantal zonnepanelen dat je hebt of wilt.",
+      "tierInfoEn": "Larger battery = more solar energy stored for evening use. Choose based on how many solar panels you have or plan to install.",
+      "tiers": [
+        { "tierId": "5kwh", "labelNl": "5 kWh", "labelEn": "5 kWh", "params": { "capacityKwh": 5 }, "costMultiplier": 0.5 },
+        { "tierId": "10kwh", "labelNl": "10 kWh", "labelEn": "10 kWh", "params": { "capacityKwh": 10 }, "costMultiplier": 1.0 },
+        { "tierId": "15kwh", "labelNl": "15 kWh", "labelEn": "15 kWh", "params": { "capacityKwh": 15 }, "costMultiplier": 1.5 }
+      ]
     }
   ]
 }

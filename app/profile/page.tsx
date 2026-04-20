@@ -12,6 +12,12 @@ function ProfileContent() {
   const { t } = useLocale()
   const searchParams = useSearchParams()
   const address = searchParams.get('address') ?? ''
+  const lat = searchParams.get('lat')
+  const lng = searchParams.get('lng')
+  const bagVboId = searchParams.get('bagVboId')
+  const postcode = searchParams.get('postcode')
+  const province = searchParams.get('province')
+  const city = searchParams.get('city')
 
   const [profile, setProfile] = useState<Partial<HomeProfile> | null>(null)
   const [streetViewUrl, setStreetViewUrl] = useState<string | null>(null)
@@ -22,7 +28,14 @@ function ProfileContent() {
 
     async function load() {
       try {
-        const res = await fetch(`/api/lookup?address=${encodeURIComponent(address)}`)
+        const lookupParams = new URLSearchParams({ address })
+        if (lat) lookupParams.set('lat', lat)
+        if (lng) lookupParams.set('lng', lng)
+        if (bagVboId) lookupParams.set('bagVboId', bagVboId)
+        if (postcode) lookupParams.set('postcode', postcode)
+        if (province) lookupParams.set('province', province)
+        if (city) lookupParams.set('city', city)
+        const res = await fetch(`/api/lookup?${lookupParams.toString()}`)
         if (!res.ok) throw new Error('lookup failed')
         const data = await res.json()
         const p: Partial<HomeProfile> = { ...data.profile, address }
@@ -61,14 +74,14 @@ function ProfileContent() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="flex items-center justify-between px-4 py-4 max-w-2xl mx-auto">
+      <header className="flex items-center justify-between px-4 py-4 max-w-4xl mx-auto">
         <a href="/" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
           ← {t('general.from')} {address}
         </a>
         <LanguageToggle />
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 pb-16 space-y-2">
+      <div className="max-w-4xl mx-auto px-4 pb-16 space-y-2">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">{t('profile.title')}</h1>
           <p className="text-gray-500 mt-1">{t('profile.subtitle')}</p>

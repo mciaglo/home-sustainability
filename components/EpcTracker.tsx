@@ -12,15 +12,14 @@ const EPC_DELTA: Partial<Record<UpgradeResult['id'], number>> = {
   'external-wall-insulation':  2,
   'roof-insulation':           1,
   'floor-insulation':          1,
-  'hr-plus-plus-glazing':      1,
-  'triple-glazing':            1,
+  'glazing':                   1,
   'solar-panels':              1,
-  'heat-pump-air':             2,
-  'heat-pump-ground':          2,
+  'heat-pump':                 2,
   'hot-water-heat-pump':       1,
   'draught-proofing':          0,
   'smart-thermostat':          0,
   'mechanical-ventilation':    0,
+  'home-battery':              0,
 }
 
 const LABEL_COLOUR: Record<EnergyLabel, string> = {

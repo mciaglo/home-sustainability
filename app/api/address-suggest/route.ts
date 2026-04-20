@@ -5,8 +5,11 @@ interface PdokDoc {
   centroide_ll: string
   postcode?: string
   straatnaam?: string
-  huisnummer?: string
+  huisnummer?: number
   woonplaatsnaam?: string
+  adresseerbaarobject_id?: string
+  nummeraanduiding_id?: string
+  provincienaam?: string
 }
 
 function parseCentroide(wkt: string): { lat: number; lng: number } | null {
@@ -24,7 +27,7 @@ export async function GET(req: NextRequest) {
     url.searchParams.set('q', q)
     url.searchParams.set('fq', 'type:adres')
     url.searchParams.set('rows', '6')
-    url.searchParams.set('fl', 'weergavenaam,centroide_ll,postcode,straatnaam,huisnummer,woonplaatsnaam')
+    url.searchParams.set('fl', 'weergavenaam,centroide_ll,postcode,straatnaam,huisnummer,woonplaatsnaam,adresseerbaarobject_id,nummeraanduiding_id,provincienaam')
 
     const res = await fetch(url.toString(), { next: { revalidate: 0 } })
     if (!res.ok) return NextResponse.json({ suggestions: [] })
@@ -41,6 +44,13 @@ export async function GET(req: NextRequest) {
           address: doc.weergavenaam,
           lat: coords.lat,
           lng: coords.lng,
+          bagVerblijfsobjectId: doc.adresseerbaarobject_id ?? null,
+          nummeraanduidingId: doc.nummeraanduiding_id ?? null,
+          postcode: doc.postcode ?? null,
+          province: doc.provincienaam ?? null,
+          city: doc.woonplaatsnaam ?? null,
+          street: doc.straatnaam ?? null,
+          houseNumber: doc.huisnummer != null ? String(doc.huisnummer) : null,
         }
       })
       .filter(Boolean)

@@ -1,6 +1,6 @@
 import nationalSubsidies from '@/data/cached/subsidies/nl-national.json'
 import provincialSubsidies from '@/data/cached/subsidies/nl-provincial.json'
-import type { Subsidy, UpgradeId } from '@/types/upgrade'
+import type { Subsidy, UpgradeId, LegacyUpgradeId } from '@/types/upgrade'
 
 interface NationalSubsidy {
   id: string
@@ -17,7 +17,7 @@ interface NationalSubsidy {
  * combining national and provincial/municipal data.
  */
 export function getSubsidies(
-  upgradeId: UpgradeId,
+  upgradeId: UpgradeId | LegacyUpgradeId,
   province: string,
   municipality?: string
 ): Subsidy[] {
@@ -63,7 +63,7 @@ export function getSubsidies(
 
 /** Total subsidy amount for a given upgrade */
 export function totalSubsidyAmount(
-  upgradeId: UpgradeId,
+  upgradeId: UpgradeId | LegacyUpgradeId,
   province: string,
   municipality?: string
 ): number {

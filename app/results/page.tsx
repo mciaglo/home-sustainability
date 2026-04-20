@@ -9,13 +9,12 @@ import upgradeDefsRaw from '@/data/static/upgrade-definitions.json'
 import SummaryStrip from '@/components/SummaryStrip'
 import SortControls, { type SortMode } from '@/components/SortControls'
 import PriceScenarioToggle from '@/components/PriceScenarioToggle'
-import EpcTracker from '@/components/EpcTracker'
+import PlanPanel from '@/components/PlanPanel'
 import UpgradeCard from '@/components/UpgradeCard'
 import LanguageToggle from '@/components/LanguageToggle'
 import type { HomeProfile, EnergyLabel } from '@/types/home-profile'
 import type { UpgradeResult, PriceScenario } from '@/types/upgrade'
 
-// Build upgrade name lookup from static defs
 const UPGRADE_NAMES: Record<string, { nl: string; en: string }> = {}
 for (const d of upgradeDefsRaw.upgrades) {
   UPGRADE_NAMES[d.id] = { nl: d.nameNl, en: d.nameEn }
@@ -25,7 +24,7 @@ type RoiGroup = 'quick' | 'good' | 'long'
 
 function getRoiGroup(payback: number): RoiGroup {
   if (payback <= 2.5) return 'quick'
-  if (payback <= 10)  return 'good'
+  if (payback <= 10) return 'good'
   return 'long'
 }
 
@@ -38,6 +37,43 @@ function sortResults(results: UpgradeResult[], mode: SortMode): UpgradeResult[] 
     case 'independence': return sorted.sort((a, b) => (b.gasReductionPercent + b.electricitySelfProducedPercent) - (a.gasReductionPercent + a.electricitySelfProducedPercent))
     default:             return sorted
   }
+}
+
+function getSmartDefaults(results: UpgradeResult[], currentLabel: EnergyLabel): Map<string, string> {
+  const LABEL_ORDER: EnergyLabel[] = ['G', 'F', 'E', 'D', 'C', 'B', 'A', 'A+', 'A++', 'A+++']
+  const EPC_DELTA: Record<string, number> = {
+    'cavity-wall-insulation': 1, 'external-wall-insulation': 2,
+    'roof-insulation': 1, 'floor-insulation': 1,
+    'glazing': 1, 'solar-panels': 1,
+    'heat-pump': 2, 'hot-water-heat-pump': 1,
+  }
+
+  const targetIdx = LABEL_ORDER.indexOf('A+++')
+  const currentIdx = LABEL_ORDER.indexOf(currentLabel)
+  if (currentIdx >= targetIdx) return new Map()
+
+  const byRoi = [...results]
+    .filter(r => !r.blockedForVvE && r.paybackYears < 99)
+    .sort((a, b) => a.paybackYears - b.paybackYears)
+
+  const selected = new Map<string, string>()
+  let labelIdx = currentIdx
+
+  for (const r of byRoi) {
+    selected.set(r.id, r.selectedTierId ?? '')
+    labelIdx += EPC_DELTA[r.id] ?? 0
+    if (labelIdx >= targetIdx) break
+  }
+
+  // Deselect 3rd card by display rank to create a visual gap (✓ ✓ ○ ✓)
+  // that signals cards are interactive
+  if (selected.size >= 4) {
+    const byRank = results.filter(r => selected.has(r.id)).sort((a, b) => a.rank - b.rank)
+    const gapUpgrade = byRank[2]
+    if (gapUpgrade) selected.delete(gapUpgrade.id)
+  }
+
+  return selected
 }
 
 function RoiGroupHeading({ group, locale }: { group: RoiGroup; locale: string }) {
@@ -61,9 +97,9 @@ export default function ResultsPage() {
   const [profile, setProfile] = useState<Partial<HomeProfile> | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('savings')
   const [scenario, setScenario] = useState<PriceScenario>('current')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selections, setSelections] = useState<Map<string, string>>(new Map())
+  const [defaultsApplied, setDefaultsApplied] = useState(false)
 
-  // Load profile from sessionStorage
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem('homeProfile')
@@ -74,25 +110,34 @@ export default function ResultsPage() {
     }
   }, [router])
 
-  // Run recommendations engine (re-runs when scenario or profile changes)
   const results = useMemo<UpgradeResult[]>(() => {
     if (!profile) return []
     const province = getProvinceFromPostcode(profile.postcode ?? '1000')
     return calculateRecommendations(profile as HomeProfile, province, undefined, scenario)
   }, [profile, scenario])
 
-  // Auto-select all non-blocked upgrades on first load
   useEffect(() => {
-    if (results.length && selectedIds.size === 0) {
-      setSelectedIds(new Set(results.filter(r => !r.blockedForVvE).map(r => r.id)))
+    if (results.length && !defaultsApplied) {
+      const currentLabel = (profile?.energyLabel ?? 'unknown') as EnergyLabel
+      setSelections(getSmartDefaults(results, currentLabel))
+      setDefaultsApplied(true)
     }
-  }, [results]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [results, defaultsApplied, profile?.energyLabel])
 
-  function toggleSelect(id: string) {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
+  function toggleSelect(id: string, tierId?: string) {
+    setSelections(prev => {
+      const next = new Map(prev)
       if (next.has(id)) next.delete(id)
-      else next.add(id)
+      else next.set(id, tierId ?? '')
+      return next
+    })
+  }
+
+  function changeTier(id: string, tierId: string) {
+    setSelections(prev => {
+      if (!prev.has(id)) return prev
+      const next = new Map(prev)
+      next.set(id, tierId)
       return next
     })
   }
@@ -107,36 +152,74 @@ export default function ResultsPage() {
     )
   }
 
-  // Neighbour context line
   const neighbourLabel = profile.postcodeAverageLabel
-  const currentLabel = profile.energyLabel ?? 'unknown'
+  const currentLabel = (profile.energyLabel ?? 'unknown') as EnergyLabel
+
+  const cardList = sortMode === 'roi' ? (
+    (() => {
+      const groups: RoiGroup[] = ['quick', 'good', 'long']
+      return groups.map(group => {
+        const cards = sorted.filter(r => getRoiGroup(r.paybackYears) === group)
+        if (cards.length === 0) return null
+        return (
+          <div key={group}>
+            <RoiGroupHeading group={group} locale={locale} />
+            <div className="space-y-3">
+              {cards.map(r => (
+                <UpgradeCard
+                  key={r.id}
+                  result={r}
+                  selected={selections.has(r.id)}
+                  selectedTierId={selections.get(r.id)}
+                  onToggleSelect={(tierId) => toggleSelect(r.id, tierId ?? r.selectedTierId)}
+                  onChangeTier={(tierId) => changeTier(r.id, tierId)}
+                  upgradeNames={UPGRADE_NAMES}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })
+    })()
+  ) : (
+    <div className="space-y-3">
+      {sorted.map(r => (
+        <UpgradeCard
+          key={r.id}
+          result={r}
+          selected={selections.has(r.id)}
+          selectedTierId={selections.get(r.id)}
+          onToggleSelect={(tierId) => toggleSelect(r.id, tierId ?? r.selectedTierId)}
+          onChangeTier={(tierId) => changeTier(r.id, tierId)}
+          upgradeNames={UPGRADE_NAMES}
+        />
+      ))}
+    </div>
+  )
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="/profile" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+    <main className="min-h-screen bg-stone-50">
+      <header className="bg-white border-b border-stone-100 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <a href="/profile" className="text-sm text-stone-400 hover:text-stone-600 transition-colors">
             ← {profile.address}
           </a>
           <LanguageToggle />
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-
+      <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Home summary */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold text-stone-900">
             {profile.address}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-stone-500 mt-0.5">
             {profile.yearBuilt} · {profile.floorArea} m²
             {profile.buildingType ? ` · ${t(`buildingType.${profile.buildingType}` as Parameters<typeof t>[0])}` : ''}
           </p>
-
-          {/* Neighbour benchmarking */}
           {neighbourLabel && currentLabel !== 'unknown' && (
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-stone-500 mt-1">
               {locale === 'nl'
                 ? `Woningen in jouw postcode hebben gemiddeld label ${neighbourLabel} — jij hebt label ${currentLabel}`
                 : `Homes in your postcode average label ${neighbourLabel} — yours is label ${currentLabel}`}
@@ -145,76 +228,57 @@ export default function ResultsPage() {
         </div>
 
         {/* Summary strip */}
-        <SummaryStrip results={results} />
-
-        {/* EPC tracker */}
-        <EpcTracker
-          currentLabel={currentLabel as EnergyLabel}
-          selectedIds={selectedIds}
-          results={results}
-        />
-
-        {/* Sort controls */}
-        <SortControls value={sortMode} onChange={setSortMode} />
-
-        {/* Price scenario */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-            {locale === 'nl' ? 'Bereken met gasprijzen van' : 'Calculate using gas prices from'}
-          </p>
-          <PriceScenarioToggle value={scenario} onChange={s => { setScenario(s); setSelectedIds(new Set()) }} />
+        <div className="mb-5">
+          <SummaryStrip results={results} />
         </div>
 
-        {/* Upgrade cards */}
-        {sortMode === 'roi' ? (
-          // ROI mode: grouped sections
-          (() => {
-            const groups: RoiGroup[] = ['quick', 'good', 'long']
-            return groups.map(group => {
-              const cards = sorted.filter(r => getRoiGroup(r.paybackYears) === group)
-              if (cards.length === 0) return null
-              return (
-                <div key={group}>
-                  <RoiGroupHeading group={group} locale={locale} />
-                  <div className="space-y-3">
-                    {cards.map(r => (
-                      <UpgradeCard
-                        key={r.id}
-                        result={r}
-                        selected={selectedIds.has(r.id)}
-                        onToggleSelect={() => toggleSelect(r.id)}
-                        upgradeNames={UPGRADE_NAMES}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )
-            })
-          })()
-        ) : (
-          <div className="space-y-3">
-            {sorted.map(r => (
-              <UpgradeCard
-                key={r.id}
-                result={r}
-                selected={selectedIds.has(r.id)}
-                onToggleSelect={() => toggleSelect(r.id)}
-                upgradeNames={UPGRADE_NAMES}
+        {/* Two-column layout */}
+        <div className="flex gap-6">
+          {/* Left: cards */}
+          <div className="flex-1 min-w-0 space-y-4">
+            {/* Controls */}
+            <div className="flex flex-wrap items-center gap-4">
+              <SortControls value={sortMode} onChange={setSortMode} />
+              <PriceScenarioToggle
+                value={scenario}
+                onChange={s => { setScenario(s); setDefaultsApplied(false); setSelections(new Map()) }}
+                hasContract={!!(profile?.contractGasEuroPerM3 || profile?.contractElectricityEuroPerKwh)}
               />
-            ))}
-          </div>
-        )}
+            </div>
 
-        {/* Financing link */}
-        <div className="pt-4 text-center">
-          <a
-            href="/financing"
-            className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2"
-          >
-            {locale === 'nl'
-              ? 'Bekijk financieringsopties en 10-jaar kostenmodel →'
-              : 'View financing options and 10-year cost model →'}
-          </a>
+            {/* Cards */}
+            {cardList}
+
+            {/* Footer links */}
+            <div className="pt-4 pb-16 lg:pb-4 flex flex-wrap justify-center gap-x-4 gap-y-1">
+              <a
+                href="/methodology"
+                className="text-sm text-stone-400 hover:text-stone-600 underline underline-offset-2"
+              >
+                {locale === 'nl' ? 'Hoe we berekenen' : 'How we calculate'}
+              </a>
+              <span className="text-stone-300">·</span>
+              <a
+                href="/quote"
+                className="text-sm text-stone-500 hover:text-stone-700 underline underline-offset-2"
+              >
+                {locale === 'nl'
+                  ? 'Ontvang gratis offertes →'
+                  : 'Get free quotes →'}
+              </a>
+            </div>
+          </div>
+
+          {/* Right: plan panel */}
+          <div className="w-72 flex-shrink-0">
+            <PlanPanel
+              currentLabel={currentLabel}
+              selections={selections}
+              results={results}
+              upgradeNames={UPGRADE_NAMES}
+              onRemove={id => toggleSelect(id)}
+            />
+          </div>
         </div>
       </div>
     </main>
