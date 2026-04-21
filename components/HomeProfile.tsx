@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/locale-context'
 import StreetViewStub from './StreetViewStub'
+import { LABEL_COLOURS } from '@/lib/constants'
 import type { HomeProfile, BuildingType, EnergyLabel, HeatingType, InsulationLevel } from '@/types/home-profile'
 
 const BUILDING_TYPES: BuildingType[] = ['terraced', 'semi-detached', 'detached', 'corner', 'apartment']
@@ -17,20 +18,6 @@ const INSULATION_LABELS: Record<InsulationLevel, { nl: string; en: string }> = {
   good:      { nl: 'Goed',       en: 'Good' },
   'very-good': { nl: 'Zeer goed', en: 'Very good' },
   unknown:   { nl: 'Onbekend',   en: 'Unknown' },
-}
-
-const LABEL_COLOURS: Record<EnergyLabel, string> = {
-  'A+++': 'bg-green-700 text-white',
-  'A++':  'bg-emerald-700 text-white',
-  'A+':   'bg-emerald-600 text-white',
-  'A':    'bg-emerald-500 text-white',
-  'B':    'bg-lime-400 text-white',
-  'C':    'bg-yellow-400 text-stone-900',
-  'D':    'bg-amber-400 text-stone-900',
-  'E':    'bg-orange-400 text-white',
-  'F':    'bg-orange-500 text-white',
-  'G':    'bg-red-500 text-white',
-  'unknown': 'bg-gray-300 text-stone-700',
 }
 
 interface Props {
@@ -87,10 +74,16 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
   const [floorInsulation, setFloorInsulation] = useState<InsulationLevel>(initial.insulation?.floor ?? 'unknown')
   const [glazingInsulation, setGlazingInsulation] = useState<InsulationLevel>(initial.insulation?.glazing ?? 'unknown')
   const [billUploaded, setBillUploaded] = useState(false)
-  const [actualGas, setActualGas] = useState<number | null>(null)
-  const [actualKwh, setActualKwh] = useState<number | null>(null)
+  const [actualGas, setActualGas] = useState<string>(initial.estimatedGasM3PerYear?.toString() ?? '')
+  const [actualKwh, setActualKwh] = useState<string>(initial.estimatedElectricityKwhPerYear?.toString() ?? '')
   const [contractGas, setContractGas] = useState<string>(initial.contractGasEuroPerM3?.toString() ?? '')
   const [contractElectricity, setContractElectricity] = useState<string>(initial.contractElectricityEuroPerKwh?.toString() ?? '')
+
+  const [hasSolar, setHasSolar] = useState(initial.existingUpgrades?.solarPanels?.has ?? false)
+  const [solarCount, setSolarCount] = useState(initial.existingUpgrades?.solarPanels?.count ?? 10)
+  const [hasHeatPump, setHasHeatPump] = useState(initial.existingUpgrades?.heatPump?.has ?? false)
+  const [heatPumpType, setHeatPumpType] = useState<'air-source' | 'ground-source'>(initial.existingUpgrades?.heatPump?.type ?? 'air-source')
+  const [hasBattery, setHasBattery] = useState(initial.existingUpgrades?.homeBattery?.has ?? false)
 
   const isMonument = initial.isMonument ?? false
   const isVvE = initial.isVvE ?? false
@@ -102,14 +95,17 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
   function handleBillUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    // Stub: in production, use pdf.js to extract gas m³ and kWh
-    // For now, simulate extraction with placeholder values
     setBillUploaded(true)
-    setActualGas(1650)
-    setActualKwh(3100)
+    setActualGas('1650')
+    setActualKwh('3100')
   }
 
   function handleConfirm() {
+    const gasVal = actualGas ? parseInt(actualGas, 10) : (initial.estimatedGasM3PerYear ?? 1500)
+    const kwhVal = actualKwh ? parseInt(actualKwh, 10) : (initial.estimatedElectricityKwhPerYear ?? 3200)
+    const gasCost = (contractGas ? parseFloat(contractGas) : 1.28)
+    const elecCost = (contractElectricity ? parseFloat(contractElectricity) : 0.32)
+
     const correctedProfile: Partial<HomeProfile> = {
       ...initial,
       yearBuilt,
@@ -125,13 +121,19 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
       },
       userCorrected: true,
       hasUploadedBill: billUploaded,
-      estimatedGasM3PerYear: actualGas ?? initial.estimatedGasM3PerYear ?? 1500,
-      estimatedElectricityKwhPerYear: actualKwh ?? initial.estimatedElectricityKwhPerYear ?? 3200,
+      estimatedGasM3PerYear: gasVal,
+      estimatedElectricityKwhPerYear: kwhVal,
+      estimatedEnergyCostPerYear: Math.round(gasVal * gasCost + kwhVal * elecCost),
       contractGasEuroPerM3: contractGas ? parseFloat(contractGas) : undefined,
       contractElectricityEuroPerKwh: contractElectricity ? parseFloat(contractElectricity) : undefined,
+      existingUpgrades: {
+        solarPanels: hasSolar ? { has: true, count: solarCount } : undefined,
+        heatPump: hasHeatPump ? { has: true, type: heatPumpType } : undefined,
+        homeBattery: hasBattery ? { has: true } : undefined,
+      },
+      dataSource: actualGas || actualKwh ? 'energy-bill' : initial.dataSource,
     }
 
-    // Store in sessionStorage and navigate to results
     sessionStorage.setItem('homeProfile', JSON.stringify(correctedProfile))
     router.push('/results')
   }
@@ -257,40 +259,76 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
         </div>
       </div>
 
-      {/* Energy data */}
+      {/* Energy consumption */}
       <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-5">
         <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">
-          {locale === 'nl' ? 'Energiegegevens' : 'Energy data'}
+          {locale === 'nl' ? 'Energieverbruik' : 'Energy consumption'}
         </h2>
+        <p className="text-xs text-stone-400">
+          {locale === 'nl'
+            ? 'Staat op je jaarafrekening — pas aan voor nauwkeurigere resultaten'
+            : 'Found on your annual energy statement — adjust for more accurate results'}
+        </p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label={locale === 'nl' ? 'Gasverbruik (m³/jaar)' : 'Gas usage (m³/yr)'}>
+            <input
+              type="number"
+              min="0"
+              max="20000"
+              placeholder={String(initial.estimatedGasM3PerYear ?? 1500)}
+              value={actualGas}
+              onChange={e => setActualGas(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
+            />
+          </Field>
+          <Field label={locale === 'nl' ? 'Stroomverbruik (kWh/jaar)' : 'Electricity (kWh/yr)'}>
+            <input
+              type="number"
+              min="0"
+              max="50000"
+              placeholder={String(initial.estimatedElectricityKwhPerYear ?? 3200)}
+              value={actualKwh}
+              onChange={e => setActualKwh(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
+            />
+          </Field>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <hr className="flex-1 border-stone-200" />
+          <span className="text-xs text-stone-400">{locale === 'nl' ? 'en/of' : 'and/or'}</span>
+          <hr className="flex-1 border-stone-200" />
+        </div>
 
         {/* Contract prices */}
         <div>
           <p className="text-sm font-medium text-stone-700">
-            {locale === 'nl' ? 'Huidig energiecontract' : 'Current energy contract'}
+            {locale === 'nl' ? 'Jouw energietarief' : 'Your energy rate'}
           </p>
           <p className="text-xs text-stone-400 mt-0.5 mb-3">
             {locale === 'nl'
-              ? 'Optioneel — voor nauwkeurigere besparingsberekeningen'
-              : 'Optional — for more accurate savings calculations'}
+              ? 'Staat op je energiecontract of jaarafrekening'
+              : 'Found on your energy contract or annual statement'}
           </p>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={locale === 'nl' ? 'Gasprijs (€/m³)' : 'Gas price (€/m³)'}>
+            <Field label={locale === 'nl' ? 'Gastarief (€/m³)' : 'Gas rate (€/m³)'}>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="1.45"
+                placeholder="1.28"
                 value={contractGas}
                 onChange={e => setContractGas(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
               />
             </Field>
-            <Field label={locale === 'nl' ? 'Stroomprijs (€/kWh)' : 'Electricity price (€/kWh)'}>
+            <Field label={locale === 'nl' ? 'Stroomtarief (€/kWh)' : 'Electricity rate (€/kWh)'}>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="0.40"
+                placeholder="0.32"
                 value={contractElectricity}
                 onChange={e => setContractElectricity(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
@@ -299,7 +337,6 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
           </div>
         </div>
 
-        {/* Divider */}
         <div className="flex items-center gap-3">
           <hr className="flex-1 border-stone-200" />
           <span className="text-xs text-stone-400">{locale === 'nl' ? 'of' : 'or'}</span>
@@ -333,6 +370,85 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
             />
           </label>
         )}
+      </div>
+
+      {/* Existing upgrades */}
+      <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">
+          {locale === 'nl' ? 'Bestaande maatregelen' : 'Existing upgrades'}
+        </h2>
+        <p className="text-xs text-stone-400">
+          {locale === 'nl'
+            ? 'Vink aan wat je al hebt — deze worden niet opnieuw aanbevolen'
+            : 'Check what you already have — these won\'t be recommended again'}
+        </p>
+
+        <div className="space-y-3">
+          {/* Solar panels */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasSolar}
+              onChange={e => setHasSolar(e.target.checked)}
+              className="w-4 h-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-600"
+            />
+            <span className="text-sm text-stone-700">
+              {locale === 'nl' ? 'Zonnepanelen' : 'Solar panels'}
+            </span>
+          </label>
+          {hasSolar && (
+            <div className="ml-7">
+              <Field label={locale === 'nl' ? 'Aantal panelen' : 'Number of panels'}>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={solarCount}
+                  onChange={e => setSolarCount(Number(e.target.value))}
+                  className="w-24 px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
+                />
+              </Field>
+            </div>
+          )}
+
+          {/* Heat pump */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasHeatPump}
+              onChange={e => setHasHeatPump(e.target.checked)}
+              className="w-4 h-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-600"
+            />
+            <span className="text-sm text-stone-700">
+              {locale === 'nl' ? 'Warmtepomp' : 'Heat pump'}
+            </span>
+          </label>
+          {hasHeatPump && (
+            <div className="ml-7">
+              <select
+                value={heatPumpType}
+                onChange={e => setHeatPumpType(e.target.value as 'air-source' | 'ground-source')}
+                className="px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-white text-stone-900"
+              >
+                <option value="air-source">{locale === 'nl' ? 'Lucht-water' : 'Air-source'}</option>
+                <option value="ground-source">{locale === 'nl' ? 'Bodem-water' : 'Ground-source'}</option>
+              </select>
+            </div>
+          )}
+
+          {/* Home battery */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasBattery}
+              onChange={e => setHasBattery(e.target.checked)}
+              className="w-4 h-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-600"
+            />
+            <span className="text-sm text-stone-700">
+              {locale === 'nl' ? 'Thuisbatterij' : 'Home battery'}
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Confirm button */}

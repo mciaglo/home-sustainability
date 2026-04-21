@@ -1,43 +1,19 @@
 'use client'
 
 import { useLocale } from '@/lib/locale-context'
-import type { EnergyLabel } from '@/types/home-profile'
-import type { UpgradeResult } from '@/types/upgrade'
-
-const LABEL_ORDER: EnergyLabel[] = ['G', 'F', 'E', 'D', 'C', 'B', 'A', 'A+', 'A++', 'A+++']
-
-const LABEL_COLOUR: Record<EnergyLabel, string> = {
-  'A+++': 'bg-green-700 text-white',
-  'A++': 'bg-emerald-700 text-white',
-  'A+': 'bg-emerald-600 text-white',
-  'A': 'bg-emerald-500 text-white',
-  'B': 'bg-lime-400 text-white',
-  'C': 'bg-yellow-400 text-stone-900',
-  'D': 'bg-amber-400 text-stone-900',
-  'E': 'bg-orange-400 text-white',
-  'F': 'bg-orange-500 text-white',
-  'G': 'bg-red-500 text-white',
-  'unknown': 'bg-gray-300 text-stone-700',
-}
-
-function fmt(n: number) {
-  return Math.round(n).toLocaleString('nl-NL')
-}
+import { LABEL_ORDER, LABEL_COLOURS, EPC_DELTA, fmt } from '@/lib/constants'
+import { buildEnergyModel, diffModels, getScenarioPrices } from '@/lib/recommendations'
+import { computeSynergySavings } from '@/lib/combinations'
+import { getProvinceFromPostcode } from '@/lib/postcode-province'
+import type { EnergyLabel, HomeProfile } from '@/types/home-profile'
+import type { UpgradeResult, PriceScenario } from '@/types/upgrade'
 
 function getEpcDelta(result: UpgradeResult, tierId: string): number {
   if (result.tiers) {
     const tier = result.tiers.find(t => t.tierId === tierId)
     if (tier) return tier.epcDelta
   }
-  const DEFAULT_EPC: Record<string, number> = {
-    'cavity-wall-insulation': 1, 'external-wall-insulation': 2,
-    'roof-insulation': 1, 'floor-insulation': 1,
-    'glazing': 1, 'solar-panels': 1,
-    'heat-pump': 2, 'hot-water-heat-pump': 1,
-    'draught-proofing': 0, 'smart-thermostat': 0,
-    'mechanical-ventilation': 0, 'home-battery': 0,
-  }
-  return DEFAULT_EPC[result.id] ?? 0
+  return EPC_DELTA[result.id] ?? 0
 }
 
 function getTierLabel(result: UpgradeResult, tierId: string, locale: string): string | null {
@@ -53,75 +29,99 @@ interface Props {
   results: UpgradeResult[]
   upgradeNames: Record<string, { nl: string; en: string }>
   onRemove: (id: string) => void
+  profile: HomeProfile
+  scenario?: PriceScenario
 }
 
-export default function PlanPanel({ currentLabel, selections, results, upgradeNames, onRemove }: Props) {
+export default function PlanPanel({ currentLabel, selections, results, upgradeNames, onRemove, profile, scenario = 'current' }: Props) {
   const { locale } = useLocale()
 
   const selected = results.filter(r => selections.has(r.id))
   const hasSelection = selected.length > 0
 
-  const currentIdx = LABEL_ORDER.indexOf(currentLabel)
+  const knownLabel = currentLabel !== 'unknown'
+  const currentIdx = knownLabel ? LABEL_ORDER.indexOf(currentLabel) : 0
   const totalDelta = selected.reduce((sum, r) => {
     const tierId = selections.get(r.id) ?? ''
     return sum + getEpcDelta(r, tierId)
   }, 0)
   const potentialIdx = Math.min(currentIdx + totalDelta, LABEL_ORDER.length - 1)
   const potentialLabel = LABEL_ORDER[potentialIdx] as EnergyLabel
+  const showTransition = knownLabel && hasSelection && potentialIdx > currentIdx
 
-  const totalSaving = selected.reduce((s, r) => {
+  const prices = getScenarioPrices(scenario, profile)
+  const province = getProvinceFromPostcode(profile.postcode ?? '1000')
+  const appliedUpgrades = selected.map(r => {
+    const tierId = selections.get(r.id) ?? r.selectedTierId ?? ''
+    const tier = r.tiers?.find(t => t.tierId === tierId)
+    return { id: r.id, tierId, params: tier?.params }
+  })
+  const currentModel = buildEnergyModel(profile, province, [], prices)
+  const planModel = buildEnergyModel(profile, province, appliedUpgrades, prices)
+  const planDiff = diffModels(currentModel, planModel)
+  const totalSaving = Math.round(planDiff.annualSavingEuro)
+
+  const avgCosts = new Map<string, number>()
+  const totalNetCostRaw = selected.reduce((s, r) => {
+    const tierId = selections.get(r.id) ?? ''
+    let avg: number
+    if (r.tiers) {
+      const tier = r.tiers.find(t => t.tierId === tierId)
+      avg = tier ? Math.round((tier.netCostMin + tier.netCostMax) / 2) : Math.round((r.netCostMin + r.netCostMax) / 2)
+    } else {
+      avg = Math.round((r.netCostMin + r.netCostMax) / 2)
+    }
+    avgCosts.set(r.id, avg)
+    return s + avg
+  }, 0)
+  const synergySavings = computeSynergySavings(new Set(selected.map(r => r.id)), avgCosts)
+  const totalNetCost = Math.max(0, totalNetCostRaw - synergySavings)
+
+  const twentyYearNet = Math.max(0, totalSaving * 20 - totalNetCost)
+
+  const individualSavingsSum = selected.reduce((s, r) => {
     const tierId = selections.get(r.id) ?? ''
     if (r.tiers) {
       const tier = r.tiers.find(t => t.tierId === tierId)
-      return s + (tier?.annualSaving ?? r.annualSaving)
+      if (tier) return s + tier.annualSaving
     }
     return s + r.annualSaving
   }, 0)
-
-  const totalNetCost = selected.reduce((s, r) => {
-    const tierId = selections.get(r.id) ?? ''
-    if (r.tiers) {
-      const tier = r.tiers.find(t => t.tierId === tierId)
-      if (tier) return s + Math.round((tier.netCostMin + tier.netCostMax) / 2)
-    }
-    return s + Math.round((r.netCostMin + r.netCostMax) / 2)
-  }, 0)
-
-  const twentyYearNet = selected.reduce((s, r) => {
-    const tierId = selections.get(r.id) ?? ''
-    let annSaving = r.annualSaving
-    let avgNet = Math.round((r.netCostMin + r.netCostMax) / 2)
-    if (r.tiers) {
-      const tier = r.tiers.find(t => t.tierId === tierId)
-      if (tier) {
-        annSaving = tier.annualSaving
-        avgNet = Math.round((tier.netCostMin + tier.netCostMax) / 2)
-      }
-    }
-    return s + Math.max(0, annSaving * 20 - avgNet)
-  }, 0)
+  const combinedDiffers = selected.length >= 2 && Math.abs(totalSaving - individualSavingsSum) > individualSavingsSum * 0.05
 
   const combinedPayback = totalSaving > 0 ? Math.round((totalNetCost / totalSaving) * 10) / 10 : 0
 
   return (
     <>
       {/* Desktop panel */}
-      <div className="hidden lg:block">
+      <div>
         <div className="sticky top-20 space-y-4">
-          <div className="bg-white rounded-2xl border border-stone-200 p-5 space-y-5">
-            {/* Label transition */}
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 space-y-4">
+            {/* Header */}
+            <div>
+              <h3 className="text-sm font-semibold text-stone-800">
+                {locale === 'nl' ? 'Jouw plan' : 'Your plan'}
+              </h3>
+              <p className="text-xs text-stone-400 mt-0.5">
+                {hasSelection
+                  ? `${selected.length} ${locale === 'nl' ? 'maatregelen geselecteerd' : 'upgrades selected'}`
+                  : (locale === 'nl' ? 'Nog geen maatregelen geselecteerd' : 'No upgrades selected yet')}
+              </p>
+            </div>
+
+            {/* Energy label */}
             <div>
               <p className="text-xs text-stone-500 mb-2">
                 {locale === 'nl' ? 'Energielabel' : 'Energy label'}
               </p>
-              <div className="flex items-center gap-3">
-                <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${LABEL_COLOUR[currentLabel]}`}>
-                  {currentLabel}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap ${LABEL_COLOURS[currentLabel]}`}>
+                  {currentLabel === 'unknown' ? '?' : currentLabel}
                 </span>
-                {hasSelection && potentialIdx > currentIdx && (
+                {showTransition && (
                   <>
-                    <span className="text-stone-300">→</span>
-                    <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${LABEL_COLOUR[potentialLabel]} transition-all duration-300`}>
+                    <span className="text-stone-300 text-sm">→</span>
+                    <span className={`px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap ${LABEL_COLOURS[potentialLabel]} transition-all duration-300`}>
                       {potentialLabel}
                     </span>
                   </>
@@ -156,14 +156,18 @@ export default function PlanPanel({ currentLabel, selections, results, upgradeNa
                     </p>
                     <p className="text-lg font-bold text-stone-900">{combinedPayback} {locale === 'nl' ? 'jaar' : 'years'}</p>
                   </div>
+                  {combinedDiffers && (
+                    <p className="text-xs text-stone-400 italic">
+                      {locale === 'nl'
+                        ? 'Gecombineerde besparing houdt rekening met wisselwerking tussen maatregelen'
+                        : 'Combined savings account for interactions between upgrades'}
+                    </p>
+                  )}
                 </div>
 
                 <hr className="border-stone-100" />
 
                 <div>
-                  <p className="text-xs text-stone-500 mb-2">
-                    {selected.length} {locale === 'nl' ? 'maatregelen geselecteerd' : 'upgrades selected'}
-                  </p>
                   <ul className="space-y-1.5">
                     {selected.map(r => {
                       const tierId = selections.get(r.id) ?? ''
@@ -187,11 +191,11 @@ export default function PlanPanel({ currentLabel, selections, results, upgradeNa
                   </ul>
                 </div>
 
-                {potentialLabel !== 'A+++' && (
+                {knownLabel && potentialLabel !== 'A+++' && (
                   <p className="text-xs text-emerald-600 text-center">
                     {locale === 'nl'
-                      ? `Voeg meer maatregelen toe om A+++ te bereiken`
-                      : `Add more upgrades to reach A+++`}
+                      ? 'Voeg meer maatregelen toe om A+++ te bereiken'
+                      : 'Add more upgrades to reach A+++'}
                   </p>
                 )}
 
@@ -208,8 +212,8 @@ export default function PlanPanel({ currentLabel, selections, results, upgradeNa
                 </a>
                 <p className="text-xs text-stone-400 text-center -mt-2">
                   {locale === 'nl'
-                    ? 'Gratis · Vrijblijvend · Max. 3 bedrijven'
-                    : 'Free · No obligation · Max. 3 companies'}
+                    ? 'Gratis · Vrijblijvend · Max. 3 installateurs'
+                    : 'Free · No obligation · Up to 3 installers'}
                 </p>
               </>
             ) : (
@@ -224,25 +228,40 @@ export default function PlanPanel({ currentLabel, selections, results, upgradeNa
       </div>
 
       {/* Mobile bottom bar */}
-      {hasSelection && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-20">
-          <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
-            <div className="flex items-center gap-2">
-              <span className={`px-2 py-1 rounded text-xs font-bold ${LABEL_COLOUR[currentLabel]}`}>
-                {currentLabel}
-              </span>
-              <span className="text-stone-300 text-xs">→</span>
-              <span className={`px-2 py-1 rounded text-xs font-bold ${LABEL_COLOUR[potentialLabel]}`}>
-                {potentialLabel}
-              </span>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-emerald-700">€{fmt(totalSaving)}<span className="text-xs font-normal text-stone-400">{locale === 'nl' ? '/jaar' : '/yr'}</span></p>
-              <p className="text-xs text-stone-400">{selected.length} {locale === 'nl' ? 'geselecteerd' : 'selected'}</p>
-            </div>
-          </div>
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-4 py-3 z-20">
+        <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
+          {hasSelection ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-stone-500">
+                  {locale === 'nl' ? 'Jouw plan' : 'Your plan'}
+                </span>
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${LABEL_COLOURS[currentLabel]}`}>
+                  {currentLabel === 'unknown' ? '?' : currentLabel}
+                </span>
+                {showTransition && (
+                  <>
+                    <span className="text-stone-300 text-xs">→</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${LABEL_COLOURS[potentialLabel]}`}>
+                      {potentialLabel}
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-emerald-700">€{fmt(totalSaving)}<span className="text-xs font-normal text-stone-400">{locale === 'nl' ? '/jaar' : '/yr'}</span></p>
+                <p className="text-xs text-stone-400">{selected.length} {locale === 'nl' ? 'geselecteerd' : 'selected'}</p>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-stone-400 w-full text-center">
+              {locale === 'nl'
+                ? 'Selecteer maatregelen om je plan te maken'
+                : 'Select upgrades to build your plan'}
+            </p>
+          )}
         </div>
-      )}
+      </div>
     </>
   )
 }

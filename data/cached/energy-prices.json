@@ -7,5 +7,6 @@
   "peak2022GasEuroPerM3": 1.85,
   "conservativeMultiplier": 0.8,
   "contractGasEuroPerM3": 1.45,
-  "contractElectricityEuroPerKwh": 0.40
+  "contractElectricityEuroPerKwh": 0.40,
+  "feedInRateEuroPerKwh": 0.11
 }

@@ -9,7 +9,7 @@ import LanguageToggle from '@/components/LanguageToggle'
 import type { HomeProfile } from '@/types/home-profile'
 
 function ProfileContent() {
-  const { t } = useLocale()
+  const { locale, t } = useLocale()
   const searchParams = useSearchParams()
   const address = searchParams.get('address') ?? ''
   const lat = searchParams.get('lat')
@@ -22,9 +22,45 @@ function ProfileContent() {
   const [profile, setProfile] = useState<Partial<HomeProfile> | null>(null)
   const [streetViewUrl, setStreetViewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
-    if (!address) return
+    // If returning from results, restore saved profile from session
+    try {
+      const saved = sessionStorage.getItem('homeProfile')
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<HomeProfile>
+        if (parsed.address && (!address || parsed.address.includes(address.split(',')[0]))) {
+          setProfile(parsed)
+          if (parsed.lat && parsed.lng) {
+            fetch(`/api/streetview?lat=${parsed.lat}&lng=${parsed.lng}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(d => { if (d?.url) setStreetViewUrl(d.url) })
+              .catch(() => {})
+          }
+          return
+        }
+      }
+    } catch {}
+
+    if (!address) {
+      // Manual entry flow — show empty form with defaults
+      setProfile({
+        address: '',
+        yearBuilt: 1980,
+        floorArea: 100,
+        buildingType: 'terraced',
+        energyLabel: 'unknown',
+        heatingType: 'gas-boiler',
+        insulation: { wall: 'unknown', roof: 'unknown', floor: 'unknown', glazing: 'unknown' },
+        estimatedGasM3PerYear: 1500,
+        estimatedElectricityKwhPerYear: 3500,
+        isMonument: false,
+        isVvE: false,
+        postcode: '',
+      } as Partial<HomeProfile>)
+      return
+    }
 
     async function load() {
       try {
@@ -50,19 +86,32 @@ function ProfileContent() {
           }
         }
       } catch {
-        setError('Er is iets misgegaan. Probeer het opnieuw.')
+        setError(t('error.lookup'))
       }
     }
 
     load()
-  }, [address])
+  }, [address, retryCount])
 
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center space-y-4">
           <p className="text-gray-600">{error}</p>
-          <a href="/" className="text-green-600 hover:underline text-sm">← Terug</a>
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={() => { setError(null); setProfile(null); setRetryCount(c => c + 1) }}
+              className="text-emerald-600 hover:underline text-sm"
+            >
+              {t('error.retry')}
+            </button>
+            <a href="/profile" className="text-stone-500 hover:underline text-sm">
+              {t('error.manualEntry')}
+            </a>
+            <a href="/" className="text-stone-400 hover:underline text-sm">
+              ← {locale === 'nl' ? 'Terug' : 'Back'}
+            </a>
+          </div>
         </div>
       </div>
     )
@@ -76,7 +125,7 @@ function ProfileContent() {
     <main className="min-h-screen bg-gray-50">
       <header className="flex items-center justify-between px-4 py-4 max-w-4xl mx-auto">
         <a href="/" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
-          ← {t('general.from')} {address}
+          ← {address || (locale === 'nl' ? 'Terug' : 'Back')}
         </a>
         <LanguageToggle />
       </header>

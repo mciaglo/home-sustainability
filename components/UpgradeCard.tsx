@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useLocale } from '@/lib/locale-context'
+import { fmt } from '@/lib/constants'
 import type { UpgradeResult, UpgradeTag } from '@/types/upgrade'
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -29,10 +30,6 @@ function TagBadge({ tag, locale }: { tag: UpgradeTag; locale: string }) {
   )
 }
 
-function fmt(n: number) {
-  return Math.round(n).toLocaleString('nl-NL')
-}
-
 interface Props {
   result: UpgradeResult
   selected: boolean
@@ -40,9 +37,12 @@ interface Props {
   onToggleSelect: (tierId?: string) => void
   onChangeTier?: (tierId: string) => void
   upgradeNames: Record<string, { nl: string; en: string }>
+  contextualSavings?: Map<string, { annualSaving: number; monthlySaving: number }>
+  standaloneSavings?: Map<string, { annualSaving: number; monthlySaving: number }>
+  selectedIds?: Set<string>
 }
 
-export default function UpgradeCard({ result, selected, selectedTierId, onToggleSelect, onChangeTier, upgradeNames }: Props) {
+export default function UpgradeCard({ result, selected, selectedTierId, onToggleSelect, onChangeTier, upgradeNames, contextualSavings, standaloneSavings, selectedIds }: Props) {
   const { locale } = useLocale()
   const [expanded, setExpanded] = useState(false)
   const [viewedTierId, setViewedTierId] = useState(selectedTierId || result.selectedTierId)
@@ -55,8 +55,13 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
 
   const activeTier = result.tiers?.find(t => t.tierId === viewedTierId) ?? result.tiers?.[0] ?? null
 
-  const monthlySaving = activeTier?.monthlySaving ?? result.monthlySaving
-  const annualSaving = activeTier?.annualSaving ?? result.annualSaving
+  const baseMonthlySaving = activeTier?.monthlySaving ?? result.monthlySaving
+  const baseAnnualSaving = activeTier?.annualSaving ?? result.annualSaving
+  const ctx = contextualSavings?.get(viewedTierId ?? '') ?? contextualSavings?.get('')
+  const monthlySaving = ctx?.monthlySaving ?? baseMonthlySaving
+  const annualSaving = ctx?.annualSaving ?? baseAnnualSaving
+  const standalone = standaloneSavings?.get(viewedTierId ?? '') ?? standaloneSavings?.get('')
+  const monthlyDelta = Math.round((ctx?.monthlySaving ?? baseMonthlySaving) - (standalone?.monthlySaving ?? baseMonthlySaving))
   const paybackYears = activeTier?.paybackYears ?? result.paybackYears
   const costMin = activeTier?.costMin ?? result.costMin
   const costMax = activeTier?.costMax ?? result.costMax
@@ -152,13 +157,17 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
         )}
       </div>
 
-      {/* VvE blocked explanation */}
+      {/* Blocked explanation — use specific restriction reason if available */}
       {isBlocked && (
         <div className="px-5 pb-4">
           <p className="text-xs text-stone-500 bg-stone-100 rounded-lg px-3 py-2">
-            {locale === 'nl'
-              ? 'Deze maatregel vereist aanpassingen aan de buitenkant — overleg eerst met je VvE.'
-              : 'This upgrade requires exterior changes — check with your VvE first.'}
+            {result.restrictions?.find(r => r.type === 'blocked')
+              ? (locale === 'nl'
+                ? result.restrictions.find(r => r.type === 'blocked')!.reasonNl
+                : result.restrictions.find(r => r.type === 'blocked')!.reasonEn)
+              : (locale === 'nl'
+                ? 'Deze maatregel vereist aanpassingen aan de buitenkant — overleg eerst met je VvE.'
+                : 'This upgrade requires exterior changes — check with your VvE first.')}
           </p>
         </div>
       )}
@@ -218,11 +227,11 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
                   {subsidies.map((s, i) => (
                     <div key={i} className="mt-1">
                       <p className="text-xs text-amber-600 font-medium">
-                        {s.name} — €{fmt(s.amount)}
+                        {locale === 'nl' ? s.name : (s.nameEn ?? s.name)} — €{fmt(s.amount)}
                       </p>
                       {s.deadline && (
                         <p className="text-xs text-amber-500">
-                          ⚠ {locale === 'nl' ? `Budget loopt op in ${s.deadline}` : `Budget exhausted by ${s.deadline}`}
+                          ⚠ {locale === 'nl' ? `Budget loopt op in ${s.deadline}` : `Budget exhausted by ${s.deadlineEn ?? s.deadline}`}
                         </p>
                       )}
                     </div>
@@ -357,19 +366,61 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
             </p>
           )}
 
-          {/* Combination warnings */}
-          {result.requiresBefore && result.requiresBefore.length > 0 && (
+          {/* Solar net metering phase-out warning */}
+          {result.id === 'solar-panels' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <p className="text-xs text-amber-700">
+                ⚠ {locale === 'nl'
+                  ? 'Let op: de salderingsregeling wordt afgebouwd. De werkelijke besparing op teruggeleverde stroom kan lager uitvallen.'
+                  : 'Note: net metering (salderingsregeling) is being phased out. Savings on exported electricity may be lower.'}
+              </p>
+            </div>
+          )}
+
+          {/* Restriction warnings */}
+          {result.restrictions && result.restrictions.filter(r => r.type === 'warning').length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1">
-              {result.requiresBefore.map(req => (
-                <p key={req} className="text-xs text-amber-700">
-                  ⚠{' '}
-                  {locale === 'nl'
-                    ? `Minder effectief zonder ${upgradeNames[req]?.nl ?? req} — overweeg dit eerst.`
-                    : `Less effective without ${upgradeNames[req]?.en ?? req} — consider doing that first.`}
+              {result.restrictions.filter(r => r.type === 'warning').map((r, i) => (
+                <p key={i} className="text-xs text-amber-700">
+                  ⚠ {locale === 'nl' ? r.reasonNl : r.reasonEn}
                 </p>
               ))}
             </div>
           )}
+
+          {/* Contextual savings delta */}
+          {monthlyDelta !== 0 && (
+            <div className={`rounded-xl px-4 py-3 border ${
+              monthlyDelta > 0
+                ? 'bg-emerald-50 border-emerald-200'
+                : 'bg-amber-50 border-amber-200'
+            }`}>
+              <p className={`text-xs ${monthlyDelta > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {monthlyDelta > 0 ? '↑' : '↓'}{' '}
+                {locale === 'nl'
+                  ? `€${Math.abs(monthlyDelta)}/mnd ${monthlyDelta > 0 ? 'meer' : 'minder'} besparing in combinatie met je geselecteerde maatregelen`
+                  : `€${Math.abs(monthlyDelta)}/mo ${monthlyDelta > 0 ? 'more' : 'less'} savings combined with your selected upgrades`}
+              </p>
+            </div>
+          )}
+
+          {/* Combination warnings — hide deps that are already selected */}
+          {(() => {
+            const unmetDeps = (result.requiresBefore ?? []).filter(id => !selectedIds?.has(id))
+            if (unmetDeps.length === 0) return null
+            return (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1">
+                {unmetDeps.map(req => (
+                  <p key={req} className="text-xs text-amber-700">
+                    ⚠{' '}
+                    {locale === 'nl'
+                      ? `Minder effectief zonder ${upgradeNames[req]?.nl ?? req} — overweeg dit eerst.`
+                      : `Less effective without ${upgradeNames[req]?.en ?? req} — consider doing that first.`}
+                  </p>
+                ))}
+              </div>
+            )
+          })()}
 
           {result.benefitsFrom && result.benefitsFrom.filter(b => b.saving !== '0%').length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 space-y-1">

@@ -5,11 +5,16 @@ import type { Subsidy, UpgradeId, LegacyUpgradeId } from '@/types/upgrade'
 interface NationalSubsidy {
   id: string
   name: string
+  nameEn?: string
   amount: number
   upgradeIds: string[]
   deadline: string | null
+  deadlineEn?: string | null
   url: string
   conditions: string
+  conditionsEn?: string
+  minRcValue?: number
+  maxYearBuilt?: number
 }
 
 /**
@@ -19,17 +24,26 @@ interface NationalSubsidy {
 export function getSubsidies(
   upgradeId: UpgradeId | LegacyUpgradeId,
   province: string,
-  municipality?: string
+  municipality?: string,
+  tierParams?: Record<string, number>,
+  yearBuilt?: number,
 ): Subsidy[] {
   const results: Subsidy[] = []
 
   // National subsidies
   for (const s of nationalSubsidies.subsidies as NationalSubsidy[]) {
     if (s.upgradeIds.includes(upgradeId)) {
+      if (s.minRcValue && tierParams?.uValue) {
+        const effectiveRc = 1 / tierParams.uValue
+        if (effectiveRc < s.minRcValue) continue
+      }
+      if (s.maxYearBuilt && yearBuilt && yearBuilt > s.maxYearBuilt) continue
       results.push({
         name: s.name,
+        nameEn: s.nameEn,
         amount: s.amount,
         deadline: s.deadline,
+        deadlineEn: s.deadlineEn,
         url: s.url,
       })
     }
@@ -45,14 +59,14 @@ export function getSubsidies(
   if (prov) {
     for (const s of prov.provincial) {
       if (s.upgradeIds.includes(upgradeId)) {
-        results.push({ name: s.name, amount: s.amount, deadline: s.deadline, url: s.url })
+        results.push({ name: s.name, nameEn: s.nameEn, amount: s.amount, deadline: s.deadline, deadlineEn: s.deadlineEn, url: s.url })
       }
     }
 
     if (municipality && prov.municipal[municipality]) {
       for (const s of prov.municipal[municipality]) {
         if (s.upgradeIds.includes(upgradeId)) {
-          results.push({ name: s.name, amount: s.amount, deadline: s.deadline, url: s.url })
+          results.push({ name: s.name, nameEn: s.nameEn, amount: s.amount, deadline: s.deadline, deadlineEn: s.deadlineEn, url: s.url })
         }
       }
     }

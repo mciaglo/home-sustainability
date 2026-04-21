@@ -17,6 +17,7 @@ export type LegacyUpgradeId =
   | 'triple-glazing'
   | 'heat-pump-air'
   | 'heat-pump-ground'
+  | 'hybrid-heat-pump'
 
 export type UpgradeTag =
   | 'top-pick'
@@ -41,6 +42,7 @@ export interface TierResult {
   tierId: string
   labelNl: string
   labelEn: string
+  params?: Record<string, number>
   costMin: number
   costMax: number
   subsidies: Subsidy[]
@@ -56,13 +58,17 @@ export interface TierResult {
   co2TreesEquivalent: number
   gasReductionPercent: number
   electricitySelfProducedPercent: number
+  savedGasM3PerYear: number
+  savedKwhPerYear: number
   epcDelta: number
 }
 
 export interface Subsidy {
   name: string
+  nameEn?: string
   amount: number // €
   deadline: string | null
+  deadlineEn?: string | null
   url: string
 }
 
@@ -93,6 +99,10 @@ export interface UpgradeResult {
   co2SavedTonnesPerYear: number
   co2TreesEquivalent: number
 
+  // Physical savings (for aggregate capping)
+  savedGasM3PerYear?: number
+  savedKwhPerYear?: number
+
   // Energy independence
   gasReductionPercent: number
   electricitySelfProducedPercent: number
@@ -108,6 +118,13 @@ export interface UpgradeResult {
   requiresBefore?: UpgradeId[] // must do these first
   benefitsFrom?: { upgradeId: UpgradeId; saving: string }[]
   blockedForVvE: boolean
+
+  // Housing restrictions
+  restrictions?: Array<{
+    type: 'blocked' | 'warning'
+    reasonNl: string
+    reasonEn: string
+  }>
 
   // Tiers
   tiers?: TierResult[]

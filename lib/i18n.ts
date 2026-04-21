@@ -6,8 +6,7 @@ export const translations = {
   nl: {
     // Landing page
     'landing.title': 'Wat levert verduurzaming jouw woning op?',
-    'landing.subtitle': 'Voer je adres in en ontdek welke maatregelen het meest opleveren — eerlijk, onafhankelijk en zonder verborgen agenda.',
-    'landing.addressPlaceholder': 'Postcode of adres...',
+    'landing.subtitle': 'Voer je postcode en huisnummer in en ontdek welke maatregelen het meest opleveren — eerlijk, onafhankelijk en zonder verborgen agenda.',
     'landing.cta': 'Bekijk mijn woning',
     'landing.privacy': 'We slaan geen persoonlijke gegevens op. Alle berekeningen zijn gebaseerd op openbare bronnen.',
     'landing.loading.bag': 'Woninggegevens ophalen...',
@@ -96,6 +95,15 @@ export const translations = {
     'heatingType.electric': 'Elektrisch',
     'heatingType.unknown': 'Onbekend',
 
+    // Summary strip
+    'results.summary.twentyYear': '20-jaar besparing',
+    'results.summary.twentyYearUnit': 'netto',
+
+    // Errors
+    'error.lookup': 'Er is iets misgegaan. Probeer het opnieuw.',
+    'error.retry': 'Opnieuw proberen',
+    'error.manualEntry': 'Zelf invullen',
+
     // General
     'general.year': 'jaar',
     'general.years': 'jaar',
@@ -108,8 +116,7 @@ export const translations = {
   en: {
     // Landing page
     'landing.title': 'What could greening your home save you?',
-    'landing.subtitle': 'Enter your address to see which upgrades pay off most — honest, independent, no sales agenda.',
-    'landing.addressPlaceholder': 'Postcode or address...',
+    'landing.subtitle': 'Enter your postcode and house number to see which upgrades pay off most — honest, independent, no sales agenda.',
     'landing.cta': 'Analyse my home',
     'landing.privacy': 'We don\'t store any personal data. All calculations are based on public sources.',
     'landing.loading.bag': 'Fetching building data...',
@@ -197,6 +204,15 @@ export const translations = {
     'heatingType.district-heating': 'District heating',
     'heatingType.electric': 'Electric',
     'heatingType.unknown': 'Unknown',
+
+    // Summary strip
+    'results.summary.twentyYear': '20-year savings',
+    'results.summary.twentyYearUnit': 'net',
+
+    // Errors
+    'error.lookup': 'Something went wrong. Please try again.',
+    'error.retry': 'Try again',
+    'error.manualEntry': 'Enter manually',
 
     // General
     'general.year': 'year',

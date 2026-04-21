@@ -4,7 +4,7 @@ export type EnergyLabel = 'A+++' | 'A++' | 'A+' | 'A' | 'B' | 'C' | 'D' | 'E' | 
 
 export type InsulationLevel = 'none' | 'partial' | 'good' | 'very-good' | 'unknown'
 
-export type HeatingType = 'gas-boiler' | 'heat-pump-air' | 'heat-pump-ground' | 'district-heating' | 'electric' | 'unknown'
+export type HeatingType = 'gas-boiler' | 'heat-pump-air' | 'heat-pump-ground' | 'hybrid-heat-pump' | 'district-heating' | 'electric' | 'unknown'
 
 export type DataSource = 'ep-online' | 'build-era-lookup' | 'user-override' | 'energy-bill'
 
@@ -57,6 +57,13 @@ export interface HomeProfile {
   // Energy contract
   contractGasEuroPerM3?: number
   contractElectricityEuroPerKwh?: number
+
+  // Existing upgrades
+  existingUpgrades?: {
+    solarPanels?: { has: boolean; count?: number }
+    heatPump?: { has: boolean; type?: 'air-source' | 'ground-source' }
+    homeBattery?: { has: boolean }
+  }
 
   // Data confidence
   dataSource: DataSource

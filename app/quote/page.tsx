@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/locale-context'
 import { getProvinceFromPostcode } from '@/lib/postcode-province'
@@ -8,6 +8,7 @@ import { calculateRecommendations } from '@/lib/recommendations'
 import upgradeDefsRaw from '@/data/static/upgrade-definitions.json'
 import installerCounts from '@/data/static/installer-counts.json'
 import LanguageToggle from '@/components/LanguageToggle'
+import { fmt } from '@/lib/constants'
 import type { HomeProfile } from '@/types/home-profile'
 import type { UpgradeResult, PriceScenario } from '@/types/upgrade'
 
@@ -16,8 +17,38 @@ for (const d of upgradeDefsRaw.upgrades) {
   UPGRADE_NAMES[d.id] = { nl: d.nameNl, en: d.nameEn }
 }
 
-function fmt(n: number) {
-  return Math.round(n).toLocaleString('nl-NL')
+function CostInfoBubble({ nl }: { nl: boolean }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [open])
+
+  return (
+    <span className="relative inline-block ml-1" ref={ref}>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
+        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-stone-200 text-stone-500 text-[10px] font-bold hover:bg-stone-300 transition-colors"
+        aria-label="Info"
+      >
+        i
+      </button>
+      {open && (
+        <div className="absolute right-0 top-6 z-20 w-60 bg-white border border-stone-200 rounded-lg shadow-lg p-3 text-xs text-stone-600 leading-relaxed">
+          {nl
+            ? 'Kosten zijn geschat op basis van gangbare prijzen van Milieu Centraal voor jouw woningtype. Werkelijke offertes kunnen afwijken op basis van de specifieke situatie van jouw woning.'
+            : 'Costs are estimated based on typical prices from Milieu Centraal for your home type. Actual quotes may vary based on your home\'s specific situation.'}
+        </div>
+      )}
+    </span>
+  )
 }
 
 export default function QuotePage() {
@@ -191,8 +222,9 @@ export default function QuotePage() {
             {/* Upgrade summary */}
             {selectedUpgrades.length > 0 && (
               <div className="bg-white rounded-2xl border border-stone-200 p-5 space-y-3">
-                <h2 className="text-sm font-semibold text-stone-700">
+                <h2 className="text-sm font-semibold text-stone-700 flex items-center">
                   {nl ? 'Jouw geselecteerde maatregelen' : 'Your selected upgrades'}
+                  <CostInfoBubble nl={nl} />
                 </h2>
                 <ul className="space-y-2">
                   {upgradeDetails.map(u => (
@@ -232,12 +264,12 @@ export default function QuotePage() {
                   {
                     step: '2',
                     title: nl ? 'Wij matchen' : 'We match',
-                    desc: nl ? 'Max. 3 bedrijven' : 'Up to 3 companies',
+                    desc: nl ? 'Gekwalificeerde installateurs in jouw regio' : 'Qualified installers in your area',
                   },
                   {
                     step: '3',
                     title: nl ? 'Ontvang offertes' : 'Get quotes',
-                    desc: nl ? 'Binnen 5 werkdagen' : 'Within 5 business days',
+                    desc: nl ? 'Max. 3 offertes per maatregel' : 'Up to 3 quotes per upgrade',
                   },
                 ].map(s => (
                   <div key={s.step} className="space-y-1">
@@ -263,10 +295,10 @@ export default function QuotePage() {
                   ? 'We werken alleen met RVO-erkende installateurs, zodat je subsidieaanvraag altijd geldig is.'
                   : 'We only work with RVO-recognised installers, so your subsidy application is always eligible.'}
               </p>
-              <p className="text-sm text-emerald-700 font-medium">
+              <p className="text-sm text-emerald-700">
                 {nl
-                  ? 'We delen alleen je postcode — nooit je adres. Niemand komt onaangekondigd aan de deur.'
-                  : 'We only share your postcode — never your address. Nobody shows up unannounced.'}
+                  ? 'Alle installateurs zijn InstallQ-geregistreerd en gecontroleerd op kwaliteit.'
+                  : 'All installers are InstallQ-registered and vetted for quality.'}
               </p>
             </div>
 
@@ -275,6 +307,23 @@ export default function QuotePage() {
               <h2 className="text-sm font-semibold text-stone-700">
                 {nl ? 'Jouw gegevens' : 'Your details'}
               </h2>
+
+              {profile?.postcode && (
+                <div>
+                  <label className="block text-xs text-stone-500 mb-1">{nl ? 'Postcode' : 'Postcode'}</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={profile.postcode}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm bg-stone-50 text-stone-500 cursor-default"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    {nl
+                      ? 'Alleen je postcode wordt gedeeld, niet je adres.'
+                      : 'Only your postcode is shared, not your address.'}
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs text-stone-500 mb-1">{nl ? 'Naam' : 'Name'}</label>
@@ -323,8 +372,8 @@ export default function QuotePage() {
                 />
                 <span className="text-xs text-stone-600">
                   {nl
-                    ? 'Ik ga akkoord dat mijn contactgegevens worden gedeeld met maximaal 3 installatiebedrijven voor het ontvangen van een offerte. Zie ons '
-                    : 'I agree that my contact details will be shared with up to 3 installation companies to receive a quote. See our '}
+                    ? 'Ik ga akkoord dat mijn contactgegevens worden gedeeld met maximaal 3 installateurs per maatregel voor het ontvangen van een offerte. Zie ons '
+                    : 'I agree that my contact details will be shared with up to 3 installers per upgrade to receive a quote. See our '}
                   <a href="/privacy" className="underline text-emerald-700 hover:text-emerald-800">
                     {nl ? 'privacybeleid' : 'privacy policy'}
                   </a>.
@@ -346,7 +395,7 @@ export default function QuotePage() {
               </button>
 
               <p className="text-xs text-stone-400 text-center">
-                {nl ? 'Gratis · Vrijblijvend · Maximaal 3 bedrijven' : 'Free · No obligation · Maximum 3 companies'}
+                {nl ? 'Gratis · Vrijblijvend · Max. 3 installateurs per maatregel' : 'Free · No obligation · Up to 3 installers per upgrade'}
               </p>
             </form>
           </>

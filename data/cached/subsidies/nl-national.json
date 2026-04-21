@@ -1,70 +1,122 @@
 {
   "_source": "RVO / ISDE",
-  "_updated": "2025-01",
-  "_note": "Updated monthly by cron. Amounts in € per household unless noted.",
+  "_updated": "2026-01",
+  "_note": "Updated monthly by cron. Amounts in € per household unless noted. 2026 ISDE rates.",
   "subsidies": [
     {
       "id": "isde-warmtepomp-lucht",
       "name": "ISDE warmtepomp (lucht-water)",
-      "amount": 3750,
+      "nameEn": "ISDE heat pump (air-source)",
+      "amount": 3025,
       "upgradeIds": ["heat-pump-air"],
-      "deadline": "Oktober (budget afhankelijk)",
+      "deadline": "Tot budget op is (verwacht oktober 2026)",
+      "deadlineEn": "Until budget runs out (expected October 2026)",
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Woningen gebouwd voor 2021"
+      "conditions": "Woningen gebouwd voor 2021",
+      "conditionsEn": "Homes built before 2021",
+      "maxYearBuilt": 2020
     },
     {
       "id": "isde-warmtepomp-bodem",
       "name": "ISDE warmtepomp (bodem-water)",
-      "amount": 5250,
+      "nameEn": "ISDE heat pump (ground-source)",
+      "amount": 4425,
       "upgradeIds": ["heat-pump-ground"],
-      "deadline": "Oktober (budget afhankelijk)",
+      "deadline": "Tot budget op is (verwacht oktober 2026)",
+      "deadlineEn": "Until budget runs out (expected October 2026)",
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Woningen gebouwd voor 2021"
+      "conditions": "Woningen gebouwd voor 2021",
+      "conditionsEn": "Homes built before 2021",
+      "maxYearBuilt": 2020
+    },
+    {
+      "id": "isde-hybride-warmtepomp",
+      "name": "ISDE hybride warmtepomp",
+      "nameEn": "ISDE hybrid heat pump",
+      "amount": 2125,
+      "upgradeIds": ["hybrid-heat-pump"],
+      "deadline": "Tot budget op is (verwacht oktober 2026)",
+      "deadlineEn": "Until budget runs out (expected October 2026)",
+      "url": "https://www.rvo.nl/subsidies-financiering/isde",
+      "conditions": "Woningen gebouwd voor 2021. Minimaal €500 subsidie.",
+      "conditionsEn": "Homes built before 2021. Minimum €500 subsidy.",
+      "maxYearBuilt": 2020
     },
     {
       "id": "isde-isolatie-dak",
       "name": "ISDE dakisolatie",
+      "nameEn": "ISDE roof insulation",
       "amount": 800,
       "upgradeIds": ["roof-insulation"],
       "deadline": null,
+      "deadlineEn": null,
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Minimaal Rc 3.5"
+      "conditions": "Minimaal Rc 3.5",
+      "conditionsEn": "Minimum Rc 3.5",
+      "minRcValue": 3.5
     },
     {
       "id": "isde-isolatie-gevel",
       "name": "ISDE gevelisolatie",
+      "nameEn": "ISDE wall insulation",
       "amount": 700,
       "upgradeIds": ["cavity-wall-insulation", "external-wall-insulation"],
       "deadline": null,
+      "deadlineEn": null,
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Minimaal Rc 2.9"
+      "conditions": "Minimaal Rc 2.9",
+      "conditionsEn": "Minimum Rc 2.9",
+      "minRcValue": 2.9
     },
     {
       "id": "isde-isolatie-vloer",
       "name": "ISDE vloerisolatie",
+      "nameEn": "ISDE floor insulation",
       "amount": 600,
       "upgradeIds": ["floor-insulation"],
       "deadline": null,
+      "deadlineEn": null,
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Minimaal Rc 2.9"
+      "conditions": "Minimaal Rc 2.9",
+      "conditionsEn": "Minimum Rc 2.9",
+      "minRcValue": 2.9
     },
     {
       "id": "isde-glas",
       "name": "ISDE isolatieglas",
+      "nameEn": "ISDE insulating glass",
       "amount": 500,
       "upgradeIds": ["hr-plus-plus-glazing", "triple-glazing"],
       "deadline": null,
+      "deadlineEn": null,
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Minimaal HR++ (U ≤ 1.2)"
+      "conditions": "Minimaal HR++ (U ≤ 1.2)",
+      "conditionsEn": "Minimum HR++ (U ≤ 1.2)"
+    },
+    {
+      "id": "isde-warmtepompboiler",
+      "name": "ISDE warmtepompboiler",
+      "nameEn": "ISDE heat pump water heater",
+      "amount": 725,
+      "upgradeIds": ["hot-water-heat-pump"],
+      "deadline": null,
+      "deadlineEn": null,
+      "url": "https://www.rvo.nl/subsidies-financiering/isde",
+      "conditions": "Woningen gebouwd voor 2021",
+      "conditionsEn": "Homes built before 2021",
+      "maxYearBuilt": 2020
     },
     {
       "id": "salderingsregeling",
       "name": "Salderingsregeling zonnepanelen",
+      "nameEn": "Net metering (solar panels)",
       "amount": 0,
       "upgradeIds": ["solar-panels"],
       "deadline": "Afbouw gepland na 2025",
+      "deadlineEn": "Phase-out planned after 2025",
       "url": "https://www.rvo.nl/onderwerpen/saldering",
-      "conditions": "Nettometing via energieleverancier"
+      "conditions": "Nettometing via energieleverancier",
+      "conditionsEn": "Net metering via energy supplier"
     }
   ]
 }

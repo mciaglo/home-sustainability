@@ -1,19 +1,17 @@
 'use client'
 
 import { useLocale } from '@/lib/locale-context'
-import type { UpgradeResult } from '@/types/upgrade'
+import { fmt } from '@/lib/constants'
+import { co2ToTrees } from '@/lib/co2'
+import { buildEnergyModel, diffModels, getScenarioPrices } from '@/lib/recommendations'
+import { getProvinceFromPostcode } from '@/lib/postcode-province'
+import type { UpgradeResult, PriceScenario } from '@/types/upgrade'
+import type { HomeProfile } from '@/types/home-profile'
 
 interface Props {
   results: UpgradeResult[]
-}
-
-function fmt(n: number) {
-  return n.toLocaleString('nl-NL')
-}
-
-// ~21 kg CO₂ absorbed per tree per year (EPA estimate)
-function co2ToTrees(tonnesPerYear: number): number {
-  return Math.round((tonnesPerYear * 1000) / 21)
+  profile: HomeProfile
+  scenario?: PriceScenario
 }
 
 function getEarliestDeadline(results: UpgradeResult[]): string | null {
@@ -31,10 +29,20 @@ function shortenDeadline(deadline: string): string {
   return match ? match[1] : deadline
 }
 
-export default function SummaryStrip({ results }: Props) {
+export default function SummaryStrip({ results, profile, scenario = 'current' }: Props) {
   const { t, locale } = useLocale()
 
-  const maxAnnualSaving = results.reduce((s, r) => s + r.annualSaving, 0)
+  const prices = getScenarioPrices(scenario, profile)
+  const province = getProvinceFromPostcode(profile.postcode ?? '1000')
+  const allUpgrades = results.map(r => ({
+    id: r.id,
+    tierId: r.selectedTierId,
+    params: r.tiers?.find(t => t.tierId === r.selectedTierId)?.params,
+  })).filter(u => u.id)
+  const currentModel = buildEnergyModel(profile, province, [], prices)
+  const allModel = buildEnergyModel(profile, province, allUpgrades, prices)
+  const allDiff = diffModels(currentModel, allModel)
+  const maxAnnualSaving = Math.round(allDiff.annualSavingEuro)
   const twentyYearNet = results.reduce((s, r) => {
     const avgNet = Math.round((r.netCostMin + r.netCostMax) / 2)
     return s + Math.max(0, r.annualSaving * 20 - avgNet)
@@ -55,9 +63,9 @@ export default function SummaryStrip({ results }: Props) {
       colour: 'text-emerald-700',
     },
     {
-      label: locale === 'nl' ? '20-jaar besparing' : '20-year savings',
+      label: t('results.summary.twentyYear'),
       value: `€${fmt(twentyYearNet)}`,
-      unit: locale === 'nl' ? 'netto' : 'net',
+      unit: t('results.summary.twentyYearUnit'),
       colour: 'text-emerald-700',
     },
     {

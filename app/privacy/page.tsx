@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <main className="min-h-screen bg-stone-50">
       <header className="bg-white border-b border-stone-100 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="/results" className="text-sm text-stone-400 hover:text-stone-600 transition-colors">
+          <a href="/quote" className="text-sm text-stone-400 hover:text-stone-600 transition-colors">
             ← {nl ? 'Terug' : 'Back'}
           </a>
           <LanguageToggle />
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1">
               <li>{nl ? 'Je naam, e-mailadres en telefoonnummer' : 'Your name, email address, and phone number'}</li>
-              <li>{nl ? 'Je postcode (NIET je straatadres)' : 'Your postcode (NOT your street address)'}</li>
+              <li>{nl ? 'Je postcode (Niet je straatadres)' : 'Your postcode (Not your street address)'}</li>
               <li>{nl ? 'Je geselecteerde maatregelen en geschatte kosten' : 'Your selected upgrades and estimated costs'}</li>
             </ul>
           </section>
@@ -61,8 +61,8 @@ export default function PrivacyPage() {
             </h2>
             <p>
               {nl
-                ? 'Uitsluitend om je te verbinden met maximaal 3 gecertificeerde installatiebedrijven in jouw regio, zodat zij een offerte kunnen uitbrengen voor de door jou geselecteerde maatregelen.'
-                : 'Solely to connect you with up to 3 certified installation companies in your area, so they can provide a quote for the upgrades you selected.'}
+                ? 'Uitsluitend om je te verbinden met maximaal 3 gecertificeerde installateurs per maatregel in jouw regio, zodat zij een offerte kunnen uitbrengen voor de door jou geselecteerde maatregelen.'
+                : 'Solely to connect you with up to 3 certified installers per upgrade in your area, so they can provide a quote for the upgrades you selected.'}
             </p>
           </section>
 
@@ -72,12 +72,12 @@ export default function PrivacyPage() {
             </h2>
             <ul className="list-disc list-inside space-y-1">
               <li>{nl ? 'De platformbeheerder (Ciaglo Bio) — om je te matchen met installateurs' : 'The platform operator (Ciaglo Bio) — to match you with installers'}</li>
-              <li>{nl ? 'Maximaal 3 installatiebedrijven in jouw regio' : 'Up to 3 installation companies in your area'}</li>
+              <li>{nl ? 'Maximaal 3 installateurs per maatregel in jouw regio' : 'Up to 3 installers per upgrade in your area'}</li>
             </ul>
             <p className="mt-2">
               {nl
-                ? 'We verkopen je gegevens nooit aan derden. We gebruiken ze niet voor marketing.'
-                : 'We never sell your data to third parties. We do not use it for marketing.'}
+                ? 'Je gegevens worden uitsluitend gedeeld met de installatiebedrijven die je offerte uitbrengen. We verkopen je gegevens niet aan andere partijen en gebruiken ze niet voor marketing.'
+                : 'Your data is only shared with the installation companies providing your quote. We do not sell your data to other parties or use it for marketing.'}
             </p>
           </section>
 

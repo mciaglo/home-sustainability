@@ -18,7 +18,7 @@ function getEraForYear(year: number): BuildEra | undefined {
   return (buildEraData.eras as BuildEra[]).find(e => year >= e.yearFrom && year <= e.yearTo)
 }
 
-function estimateEnergyCost(yearBuilt: number, floorArea: number): { gasM3: number; kWh: number; cost: number } {
+function estimateEnergyCost(yearBuilt: number, floorArea: number, buildingType?: string): { gasM3: number; kWh: number; cost: number } {
   const era = getEraForYear(yearBuilt)
   // Rough national averages adjusted for build era and size
   const baseGasM3 = era?.id === 'pre-1920' ? 2800
@@ -29,9 +29,14 @@ function estimateEnergyCost(yearBuilt: number, floorArea: number): { gasM3: numb
     : era?.id === '2006-2014' ? 1000
     : 600 // 2015+
 
+  const baseKwh = buildingType === 'apartment' ? 2400
+    : buildingType === 'terraced' || buildingType === 'corner' ? 3000
+    : buildingType === 'semi-detached' ? 3200
+    : 3600
+
   const sizeMultiplier = floorArea / 100 // normalised to 100m²
   const gasM3 = Math.round(baseGasM3 * sizeMultiplier)
-  const kWh = Math.round(3200 * sizeMultiplier) // rough average
+  const kWh = Math.round(baseKwh * sizeMultiplier)
   const cost = Math.round(gasM3 * energyPrices.gasEuroPerM3 + kWh * energyPrices.electricityEuroPerKwh)
 
   return { gasM3, kWh, cost }
@@ -126,12 +131,10 @@ async function fetchEPOnline(bagVboId: string): Promise<{ label: EnergyLabel; re
   }
 }
 
-// ---------------------------------------------------------------------------
-// MOCK — replace with real CBS API call
-// ---------------------------------------------------------------------------
+// TODO: replace with real CBS Statline API call
 async function mockFetchNeighbourLabel(postcode: string): Promise<EnergyLabel | null> {
   void postcode
-  return 'D'
+  return null
 }
 
 const LABEL_RANK: Record<string, number> = {
@@ -240,7 +243,22 @@ export const nlAdapter: CountryAdapter = {
 
   buildProfile(buildingData: BuildingData, energyLabel: EnergyLabel): Partial<HomeProfile> {
     const era = getEraForYear(buildingData.yearBuilt)
-    const energy = estimateEnergyCost(buildingData.yearBuilt, buildingData.floorArea)
+    const energy = estimateEnergyCost(buildingData.yearBuilt, buildingData.floorArea, buildingData.buildingType)
+
+    // If EP-online returned no label, estimate from build era
+    const RANK_TO_LABEL: Record<number, EnergyLabel> = {
+      10: 'A+++', 9: 'A++', 8: 'A+', 7: 'A', 6: 'B', 5: 'C', 4: 'D', 3: 'E', 2: 'F', 1: 'G',
+    }
+    let effectiveLabel = energyLabel
+    let labelRegistered = true
+    let dataSource: HomeProfile['dataSource'] = 'ep-online'
+
+    if (energyLabel === 'unknown') {
+      const rank = expectedLabelForEra(buildingData.yearBuilt)
+      effectiveLabel = RANK_TO_LABEL[rank] ?? 'D'
+      labelRegistered = false
+      dataSource = 'build-era-lookup'
+    }
 
     const eraInsulation = era?.insulation ?? {
       wall: 'unknown' as InsulationLevel, roof: 'unknown' as InsulationLevel,
@@ -248,9 +266,9 @@ export const nlAdapter: CountryAdapter = {
     }
 
     // If the energy label is better than expected for the build era, infer upgrades were done
-    const insulation = adjustInsulationForLabel(eraInsulation, energyLabel, buildingData.yearBuilt)
+    const insulation = adjustInsulationForLabel(eraInsulation, effectiveLabel, buildingData.yearBuilt)
 
-    const heatingType = inferHeatingType(era?.typicalHeating ?? 'unknown', energyLabel)
+    const heatingType = inferHeatingType(era?.typicalHeating ?? 'unknown', effectiveLabel)
 
     return {
       bagId: buildingData.bagId,
@@ -263,15 +281,15 @@ export const nlAdapter: CountryAdapter = {
       lng: buildingData.lng,
       postcode: buildingData.postcode,
       city: buildingData.city,
-      energyLabel,
-      energyLabelRegistered: true,
+      energyLabel: effectiveLabel,
+      energyLabelRegistered: labelRegistered,
       insulation,
       heatingType,
       estimatedGasM3PerYear: energy.gasM3,
       estimatedElectricityKwhPerYear: energy.kWh,
       estimatedEnergyCostPerYear: energy.cost,
       hasGridCongestion: false,
-      dataSource: 'build-era-lookup',
+      dataSource,
       hasUploadedBill: false,
       userCorrected: false,
     }

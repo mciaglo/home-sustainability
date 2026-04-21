@@ -3,15 +3,17 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/locale-context'
-import { calculateRecommendations } from '@/lib/recommendations'
+import { calculateRecommendations, buildEnergyModel, diffModels, getScenarioPrices } from '@/lib/recommendations'
 import { getProvinceFromPostcode } from '@/lib/postcode-province'
 import upgradeDefsRaw from '@/data/static/upgrade-definitions.json'
 import SummaryStrip from '@/components/SummaryStrip'
 import SortControls, { type SortMode } from '@/components/SortControls'
 import PriceScenarioToggle from '@/components/PriceScenarioToggle'
 import PlanPanel from '@/components/PlanPanel'
+import EnergyBreakdown from '@/components/EnergyBreakdown'
 import UpgradeCard from '@/components/UpgradeCard'
 import LanguageToggle from '@/components/LanguageToggle'
+import { LABEL_ORDER, EPC_DELTA } from '@/lib/constants'
 import type { HomeProfile, EnergyLabel } from '@/types/home-profile'
 import type { UpgradeResult, PriceScenario } from '@/types/upgrade'
 
@@ -40,21 +42,13 @@ function sortResults(results: UpgradeResult[], mode: SortMode): UpgradeResult[] 
 }
 
 function getSmartDefaults(results: UpgradeResult[], currentLabel: EnergyLabel): Map<string, string> {
-  const LABEL_ORDER: EnergyLabel[] = ['G', 'F', 'E', 'D', 'C', 'B', 'A', 'A+', 'A++', 'A+++']
-  const EPC_DELTA: Record<string, number> = {
-    'cavity-wall-insulation': 1, 'external-wall-insulation': 2,
-    'roof-insulation': 1, 'floor-insulation': 1,
-    'glazing': 1, 'solar-panels': 1,
-    'heat-pump': 2, 'hot-water-heat-pump': 1,
-  }
-
   const targetIdx = LABEL_ORDER.indexOf('A+++')
   const currentIdx = LABEL_ORDER.indexOf(currentLabel)
   if (currentIdx >= targetIdx) return new Map()
 
   const byRoi = [...results]
     .filter(r => !r.blockedForVvE && r.paybackYears < 99)
-    .sort((a, b) => a.paybackYears - b.paybackYears)
+    .sort((a, b) => b.annualSaving - a.annualSaving)
 
   const selected = new Map<string, string>()
   let labelIdx = currentIdx
@@ -63,14 +57,6 @@ function getSmartDefaults(results: UpgradeResult[], currentLabel: EnergyLabel): 
     selected.set(r.id, r.selectedTierId ?? '')
     labelIdx += EPC_DELTA[r.id] ?? 0
     if (labelIdx >= targetIdx) break
-  }
-
-  // Deselect 3rd card by display rank to create a visual gap (✓ ✓ ○ ✓)
-  // that signals cards are interactive
-  if (selected.size >= 4) {
-    const byRank = results.filter(r => selected.has(r.id)).sort((a, b) => a.rank - b.rank)
-    const gapUpgrade = byRank[2]
-    if (gapUpgrade) selected.delete(gapUpgrade.id)
   }
 
   return selected
@@ -105,6 +91,15 @@ export default function ResultsPage() {
       const raw = sessionStorage.getItem('homeProfile')
       if (!raw) { router.push('/'); return }
       setProfile(JSON.parse(raw) as Partial<HomeProfile>)
+
+      const saved = sessionStorage.getItem('quoteSelections')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.selections && Object.keys(parsed.selections).length > 0) {
+          setSelections(new Map(Object.entries(parsed.selections)))
+          setDefaultsApplied(true)
+        }
+      }
     } catch {
       router.push('/')
     }
@@ -124,11 +119,18 @@ export default function ResultsPage() {
     }
   }, [results, defaultsApplied, profile?.energyLabel])
 
+  function saveSelections(sel: Map<string, string>) {
+    const obj: Record<string, string> = {}
+    sel.forEach((v, k) => { obj[k] = v })
+    sessionStorage.setItem('quoteSelections', JSON.stringify({ selections: obj }))
+  }
+
   function toggleSelect(id: string, tierId?: string) {
     setSelections(prev => {
       const next = new Map(prev)
       if (next.has(id)) next.delete(id)
       else next.set(id, tierId ?? '')
+      saveSelections(next)
       return next
     })
   }
@@ -138,11 +140,99 @@ export default function ResultsPage() {
       if (!prev.has(id)) return prev
       const next = new Map(prev)
       next.set(id, tierId)
+      saveSelections(next)
       return next
     })
   }
 
   const sorted = sortResults(results, sortMode)
+
+  const currentModel = useMemo(() => {
+    if (!profile) return null
+    const province = getProvinceFromPostcode(profile.postcode ?? '1000')
+    const prices = getScenarioPrices(scenario, profile)
+    return buildEnergyModel(profile as HomeProfile, province, [], prices)
+  }, [profile, scenario])
+
+  const standaloneSavings = useMemo(() => {
+    if (!profile || results.length === 0) return new Map<string, Map<string, { annualSaving: number; monthlySaving: number }>>()
+    const province = getProvinceFromPostcode(profile.postcode ?? '1000')
+    const prices = getScenarioPrices(scenario, profile)
+    const hp = profile as HomeProfile
+    const baseModel = buildEnergyModel(hp, province, [], prices)
+    const map = new Map<string, Map<string, { annualSaving: number; monthlySaving: number }>>()
+
+    for (const r of results) {
+      const tierMap = new Map<string, { annualSaving: number; monthlySaving: number }>()
+      if (r.tiers && r.tiers.length > 0) {
+        for (const tier of r.tiers) {
+          const withThis = buildEnergyModel(hp, province,
+            [{ id: r.id, tierId: tier.tierId, params: tier.params }], prices)
+          const diff = diffModels(baseModel, withThis)
+          const ann = Math.round(diff.annualSavingEuro)
+          tierMap.set(tier.tierId, { annualSaving: ann, monthlySaving: Math.round(ann / 12) })
+        }
+      } else {
+        const withThis = buildEnergyModel(hp, province, [{ id: r.id }], prices)
+        const diff = diffModels(baseModel, withThis)
+        const ann = Math.round(diff.annualSavingEuro)
+        tierMap.set('', { annualSaving: ann, monthlySaving: Math.round(ann / 12) })
+      }
+      map.set(r.id, tierMap)
+    }
+    return map
+  }, [results, profile, scenario])
+
+  const contextualSavings = useMemo(() => {
+    if (!profile || results.length === 0) return new Map<string, Map<string, { annualSaving: number; monthlySaving: number }>>()
+    const province = getProvinceFromPostcode(profile.postcode ?? '1000')
+    const prices = getScenarioPrices(scenario, profile)
+    const hp = profile as HomeProfile
+
+    const selectedUpgrades = results
+      .filter(r => selections.has(r.id))
+      .map(r => {
+        const tierId = selections.get(r.id) ?? r.selectedTierId ?? ''
+        const tier = r.tiers?.find(t => t.tierId === tierId)
+        return { id: r.id, tierId, params: tier?.params }
+      })
+
+    const baseContextModel = buildEnergyModel(hp, province, selectedUpgrades, prices)
+    const map = new Map<string, Map<string, { annualSaving: number; monthlySaving: number }>>()
+
+    for (const r of results) {
+      const isSelected = selections.has(r.id)
+      const context = isSelected
+        ? selectedUpgrades.filter(u => u.id !== r.id)
+        : selectedUpgrades
+      const contextModel = isSelected
+        ? buildEnergyModel(hp, province, context, prices)
+        : baseContextModel
+
+      const tierMap = new Map<string, { annualSaving: number; monthlySaving: number }>()
+
+      if (r.tiers && r.tiers.length > 0) {
+        for (const tier of r.tiers) {
+          const withThis = buildEnergyModel(hp, province,
+            [...context, { id: r.id, tierId: tier.tierId, params: tier.params }], prices)
+          const diff = diffModels(contextModel, withThis)
+          const ann = Math.round(diff.annualSavingEuro)
+          tierMap.set(tier.tierId, { annualSaving: ann, monthlySaving: Math.round(ann / 12) })
+        }
+      } else {
+        const withThis = buildEnergyModel(hp, province,
+          [...context, { id: r.id }], prices)
+        const diff = diffModels(contextModel, withThis)
+        const ann = Math.round(diff.annualSavingEuro)
+        tierMap.set('', { annualSaving: ann, monthlySaving: Math.round(ann / 12) })
+      }
+
+      map.set(r.id, tierMap)
+    }
+    return map
+  }, [results, selections, profile, scenario])
+
+  const selectedIdSet = useMemo(() => new Set(selections.keys()), [selections])
 
   if (!profile) {
     return (
@@ -153,7 +243,7 @@ export default function ResultsPage() {
   }
 
   const neighbourLabel = profile.postcodeAverageLabel
-  const currentLabel = (profile.energyLabel ?? 'unknown') as EnergyLabel
+  const currentLabel = (profile.energyLabel || 'unknown') as EnergyLabel
 
   const cardList = sortMode === 'roi' ? (
     (() => {
@@ -174,6 +264,9 @@ export default function ResultsPage() {
                   onToggleSelect={(tierId) => toggleSelect(r.id, tierId ?? r.selectedTierId)}
                   onChangeTier={(tierId) => changeTier(r.id, tierId)}
                   upgradeNames={UPGRADE_NAMES}
+                  contextualSavings={contextualSavings.get(r.id)}
+                  standaloneSavings={standaloneSavings.get(r.id)}
+                  selectedIds={selectedIdSet}
                 />
               ))}
             </div>
@@ -192,6 +285,9 @@ export default function ResultsPage() {
           onToggleSelect={(tierId) => toggleSelect(r.id, tierId ?? r.selectedTierId)}
           onChangeTier={(tierId) => changeTier(r.id, tierId)}
           upgradeNames={UPGRADE_NAMES}
+          contextualSavings={contextualSavings.get(r.id)}
+          standaloneSavings={standaloneSavings.get(r.id)}
+          selectedIds={selectedIdSet}
         />
       ))}
     </div>
@@ -229,13 +325,23 @@ export default function ResultsPage() {
 
         {/* Summary strip */}
         <div className="mb-5">
-          <SummaryStrip results={results} />
+          <SummaryStrip results={results} profile={profile as HomeProfile} scenario={scenario} />
         </div>
+
+        {/* Energy breakdown */}
+        {currentModel && (
+          <div className="mb-5">
+            <EnergyBreakdown current={currentModel} />
+          </div>
+        )}
 
         {/* Two-column layout */}
         <div className="flex gap-6">
           {/* Left: cards */}
           <div className="flex-1 min-w-0 space-y-4">
+            <h2 className="text-lg font-bold text-stone-800">
+              {locale === 'nl' ? 'Aanbevolen maatregelen' : 'Recommended upgrades'}
+            </h2>
             {/* Controls */}
             <div className="flex flex-wrap items-center gap-4">
               <SortControls value={sortMode} onChange={setSortMode} />
@@ -269,14 +375,16 @@ export default function ResultsPage() {
             </div>
           </div>
 
-          {/* Right: plan panel */}
-          <div className="w-72 flex-shrink-0">
+          {/* Plan panel: desktop sidebar + mobile bottom bar */}
+          <div className="hidden lg:block lg:w-80 flex-shrink-0">
             <PlanPanel
               currentLabel={currentLabel}
               selections={selections}
               results={results}
               upgradeNames={UPGRADE_NAMES}
               onRemove={id => toggleSelect(id)}
+              profile={profile as HomeProfile}
+              scenario={scenario}
             />
           </div>
         </div>

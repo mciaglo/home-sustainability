@@ -60,3 +60,20 @@ export function getSynergies(upgradeId: UpgradeId): { upgradeId: UpgradeId; savi
 export function isBlockedForVvE(requiresExteriorAccess: boolean): boolean {
   return requiresExteriorAccess
 }
+
+/** Computes total cost savings from synergies between selected upgrades */
+export function computeSynergySavings(
+  selectedIds: Set<string>,
+  avgCosts: Map<string, number>,
+): number {
+  let totalSavings = 0
+  for (const syn of SYNERGIES) {
+    if (syn.savingPercent <= 0) continue
+    const [a, b] = syn.upgradeIds
+    if (selectedIds.has(a) && selectedIds.has(b)) {
+      const smallerCost = Math.min(avgCosts.get(a) ?? 0, avgCosts.get(b) ?? 0)
+      totalSavings += Math.round(smallerCost * syn.savingPercent / 100)
+    }
+  }
+  return totalSavings
+}

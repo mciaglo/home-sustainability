@@ -10,11 +10,14 @@
           {
             "id": "ams-duurzaamheidslening",
             "name": "Amsterdamse Duurzaamheidslening",
+            "nameEn": "Amsterdam Sustainability Loan",
             "amount": 0,
             "upgradeIds": ["cavity-wall-insulation", "roof-insulation", "floor-insulation", "hr-plus-plus-glazing", "heat-pump-air"],
             "deadline": null,
+            "deadlineEn": null,
             "url": "https://www.amsterdam.nl/wonen-leefomgeving/duurzaamheid/subsidies-regelingen/",
-            "conditions": "Renteloze lening tot €25.000"
+            "conditions": "Renteloze lening tot €25.000",
+            "conditionsEn": "Interest-free loan up to €25,000"
           }
         ],
         "Haarlem": []

@@ -9,6 +9,26 @@
     "2006-2014": { "wall": 0.28, "roof": 0.25, "floor": 0.28, "glazing": 1.2 },
     "2015+":     { "wall": 0.22, "roof": 0.20, "floor": 0.22, "glazing": 0.7 }
   },
+  "insulationLevelOverrides": {
+    "wall":    { "none": 1.8, "partial": 0.8,  "good": 0.4,  "very-good": 0.22 },
+    "roof":    { "none": 2.0, "partial": 0.5,  "good": 0.4,  "very-good": 0.20 },
+    "floor":   { "none": 1.5, "partial": 0.7,  "good": 0.4,  "very-good": 0.22 },
+    "glazing": { "none": 5.8, "partial": 2.9,  "good": 1.2,  "very-good": 0.7  }
+  },
+  "heatPumpCopByLabel": {
+    "air-source":    { "G": 2.2, "F": 2.4, "E": 2.6, "D": 2.8, "C": 3.0, "B": 3.2, "A": 3.5, "A+": 3.8, "A++": 4.0, "A+++": 4.2, "unknown": 2.8 },
+    "ground-source": { "G": 3.2, "F": 3.4, "E": 3.6, "D": 3.8, "C": 4.0, "B": 4.2, "A": 4.5, "A+": 4.8, "A++": 5.0, "A+++": 5.2, "unknown": 3.8 },
+    "hybrid":        { "G": 2.4, "F": 2.6, "E": 2.8, "D": 3.0, "C": 3.2, "B": 3.4, "A": 3.7, "A+": 3.9, "A++": 4.1, "A+++": 4.3, "unknown": 3.0 },
+    "air-to-air":    { "G": 3.0, "F": 3.2, "E": 3.5, "D": 3.8, "C": 4.0, "B": 4.3, "A": 4.5, "A+": 4.8, "A++": 5.0, "A+++": 5.2, "unknown": 3.8 }
+  },
+  "airChangesPerHour": {
+    "pre-1945":  1.2,
+    "1945-1974": 1.0,
+    "1975-1991": 0.8,
+    "1992-2005": 0.6,
+    "2006-2014": 0.4,
+    "2015+":     0.3
+  },
   "targets": {
     "cavity-wall-insulation":    { "wall": 0.35, "standard": "Rc 2.9" },
     "external-wall-insulation":  { "wall": 0.22, "standard": "Rc 4.5" },
