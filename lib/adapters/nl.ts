@@ -58,16 +58,82 @@ interface BagWfsProperties {
   pandstatus: string
 }
 
-function inferBuildingType(gebruiksdoel: string, oppervlakte: number): string {
+interface BagResult {
+  identificatie: string
+  oppervlakte: number
+  gebruiksdoel: string
+  bouwjaar: number
+  dwellingCount?: number
+  openbare_ruimte?: string
+  huisnummer?: string
+  postcode?: string
+  woonplaats?: string
+}
+
+function inferBuildingType(gebruiksdoel: string, oppervlakte: number, dwellingCount?: number): string {
   if (gebruiksdoel.includes('woonfunctie')) {
-    if (oppervlakte < 80) return 'apartment'
+    if (dwellingCount != null && dwellingCount > 1) return 'apartment'
+    if (dwellingCount == null && oppervlakte < 80) return 'apartment'
     if (oppervlakte > 200) return 'detached'
+    if (oppervlakte >= 130) return 'semi-detached'
     return 'terraced'
   }
   return 'detached'
 }
 
-async function fetchBAG(vboId: string): Promise<BagWfsProperties | null> {
+const BAG_API_BASE = 'https://api.bag.kadaster.nl/lvbag/individuelebevragingen/v2'
+
+async function fetchBAGKadaster(vboId: string): Promise<BagResult | null> {
+  const apiKey = process.env.BAG_API_KEY
+  if (!apiKey) return null
+
+  const headers: Record<string, string> = {
+    'X-Api-Key': apiKey,
+    'Accept': 'application/hal+json',
+  }
+
+  try {
+    const vboRes = await fetch(`${BAG_API_BASE}/verblijfsobjecten/${vboId}`, { headers })
+    if (!vboRes.ok) return null
+
+    const vboData = await vboRes.json()
+    const vbo = vboData?.verblijfsobject
+    if (!vbo) return null
+
+    const pandId = vbo.pandIdentificaties?.[0]
+    if (!pandId) return null
+
+    const [pandRes, countRes] = await Promise.all([
+      fetch(`${BAG_API_BASE}/panden/${pandId}`, { headers }),
+      fetch(`${BAG_API_BASE}/verblijfsobjecten?pandIdentificatie=${pandId}&pageSize=1`, { headers }),
+    ])
+
+    let bouwjaar = 0
+    if (pandRes.ok) {
+      const pandData = await pandRes.json()
+      bouwjaar = pandData?.pand?.oorspronkelijkBouwjaar ?? 0
+    }
+
+    let dwellingCount = 1
+    if (countRes.ok) {
+      const countData = await countRes.json()
+      dwellingCount = countData?.page?.totalElements ??
+        countData?._embedded?.verblijfsobjecten?.length ?? 1
+    }
+
+    return {
+      identificatie: vbo.identificatie,
+      oppervlakte: vbo.oppervlakte,
+      gebruiksdoel: (vbo.gebruiksdoelen ?? []).join(', '),
+      bouwjaar,
+      dwellingCount,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function fetchBAGPdok(vboId: string): Promise<BagResult | null> {
   const filter = `<Filter><PropertyIsEqualTo><PropertyName>identificatie</PropertyName><Literal>${vboId}</Literal></PropertyIsEqualTo></Filter>`
   const url = new URL('https://service.pdok.nl/lv/bag/wfs/v2_0')
   url.searchParams.set('service', 'WFS')
@@ -82,8 +148,25 @@ async function fetchBAG(vboId: string): Promise<BagWfsProperties | null> {
   if (!res.ok) return null
 
   const data = await res.json()
-  const feature = data?.features?.[0]
-  return feature?.properties ?? null
+  const props = data?.features?.[0]?.properties as BagWfsProperties | undefined
+  if (!props) return null
+
+  return {
+    identificatie: props.identificatie,
+    oppervlakte: props.oppervlakte,
+    gebruiksdoel: props.gebruiksdoel,
+    bouwjaar: props.bouwjaar,
+    openbare_ruimte: props.openbare_ruimte,
+    huisnummer: String(props.huisnummer) + (props.huisletter ?? '') + (props.toevoeging ? `-${props.toevoeging}` : ''),
+    postcode: props.postcode,
+    woonplaats: props.woonplaats,
+  }
+}
+
+async function fetchBAG(vboId: string): Promise<BagResult | null> {
+  const kadaster = await fetchBAGKadaster(vboId)
+  if (kadaster) return kadaster
+  return fetchBAGPdok(vboId)
 }
 
 interface EpOnlineResult {
@@ -190,19 +273,23 @@ export const nlAdapter: CountryAdapter = {
     if (hints?.bagVboId) {
       const bag = await fetchBAG(hints.bagVboId)
       if (bag) {
+        const isVvE = bag.dwellingCount != null
+          ? bag.dwellingCount > 1
+          : (bag.gebruiksdoel.includes('woonfunctie') && bag.oppervlakte < 60)
+
         return {
           bagId: bag.identificatie,
           yearBuilt: bag.bouwjaar,
           floorArea: bag.oppervlakte,
-          buildingType: inferBuildingType(bag.gebruiksdoel, bag.oppervlakte),
+          buildingType: inferBuildingType(bag.gebruiksdoel, bag.oppervlakte, bag.dwellingCount),
           isMonument: false,
-          isVvE: bag.gebruiksdoel.includes('woonfunctie') && bag.oppervlakte < 60,
+          isVvE,
           lat: hints.lat ?? 0,
           lng: hints.lng ?? 0,
-          postcode: hints.postcode ?? bag.postcode,
-          city: hints.city ?? bag.woonplaats,
-          street: bag.openbare_ruimte,
-          houseNumber: String(bag.huisnummer) + bag.huisletter + (bag.toevoeging ? `-${bag.toevoeging}` : ''),
+          postcode: hints.postcode ?? bag.postcode ?? '',
+          city: hints.city ?? bag.woonplaats ?? '',
+          street: bag.openbare_ruimte ?? address,
+          houseNumber: bag.huisnummer ?? '',
         }
       }
     }

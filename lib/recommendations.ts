@@ -22,7 +22,22 @@ const COP_HOT_WATER = 2.5
 const CEILING_HEIGHT = 2.6
 const AIR_HEAT_FACTOR = 0.335 // ρ_air × c_p = 1.2 × 0.279 Wh/(kg·K)
 const BATTERY_CYCLES_PER_YEAR = 250
-const HYBRID_HP_FRACTION = 0.60 // fraction of heating met by heat pump in hybrid
+const HYBRID_HP_FRACTION = 0.60
+
+const HYBRID_FRACTION_BY_LABEL: Record<string, number> = {
+  'G': 0.45, 'F': 0.45,
+  'E': 0.55, 'D': 0.55,
+  'C': 0.65, 'B': 0.65,
+  'A': 0.75, 'A+': 0.75, 'A++': 0.75, 'A+++': 0.75,
+}
+
+const BACKUP_FRACTION_BY_LABEL: Record<string, number> = {
+  'G': 0.08, 'F': 0.08,
+  'E': 0.05, 'D': 0.05,
+  'C': 0.02, 'B': 0.02,
+  'A': 0.005, 'A+': 0.005, 'A++': 0.005, 'A+++': 0.005,
+}
+const BACKUP_FRACTION_GROUND_SOURCE = 0.01
 
 const SMART_THERMO_FACTOR: Record<string, number> = {
   'gas-boiler': 0.90,
@@ -67,6 +82,7 @@ export interface HomeEnergyModel {
   totalCostEuro: number
   totalCo2Tonnes: number
 
+  peakHeatLoadKw: number
   normalizationFactor: number
 }
 
@@ -293,9 +309,29 @@ export function buildEnergyModel(
   let hwSource: 'gas-boiler' | 'heat-pump-boiler' = 'gas-boiler'
   let hpCop = 3.0
   let hybridFraction = HYBRID_HP_FRACTION
+  let hpIsGroundSource = false
   let solarKwp = 0
   let batteryKwh = 0
+
+  // Pre-compute insulation EPC delta so heat-pump COP lookup is order-independent
   let insulationEpcDelta = 0
+  for (const upg of appliedUpgrades) {
+    switch (upg.id) {
+      case 'cavity-wall-insulation': insulationEpcDelta += EPC_DELTA['cavity-wall-insulation'] ?? 0; break
+      case 'external-wall-insulation': insulationEpcDelta += EPC_DELTA['external-wall-insulation'] ?? 0; break
+      case 'roof-insulation': insulationEpcDelta += EPC_DELTA['roof-insulation'] ?? 0; break
+      case 'floor-insulation': insulationEpcDelta += EPC_DELTA['floor-insulation'] ?? 0; break
+      case 'glazing': insulationEpcDelta += EPC_DELTA[upg.tierId ?? 'glazing'] ?? 0; break
+    }
+  }
+
+  // Compute effective label for heat pump COP and hybrid fraction lookups
+  const currentLabelIdx = LABEL_ORDER.indexOf(profile.energyLabel as EnergyLabel)
+  const effectiveLabelIdx = Math.min(
+    (currentLabelIdx >= 0 ? currentLabelIdx : 4) + insulationEpcDelta,
+    LABEL_ORDER.length - 1
+  )
+  const effectiveLabel = LABEL_ORDER[effectiveLabelIdx] as EnergyLabel
 
   // Account for existing upgrades
   if (profile.existingUpgrades?.solarPanels?.has) {
@@ -316,23 +352,18 @@ export function buildEnergyModel(
     switch (upg.id) {
       case 'cavity-wall-insulation':
         u.wall = Math.min(u.wall, targetUValues['cavity-wall-insulation']?.wall ?? 0.35)
-        insulationEpcDelta += EPC_DELTA['cavity-wall-insulation'] ?? 0
         break
       case 'external-wall-insulation':
         u.wall = Math.min(u.wall, targetUValues['external-wall-insulation']?.wall ?? 0.22)
-        insulationEpcDelta += EPC_DELTA['external-wall-insulation'] ?? 0
         break
       case 'roof-insulation':
         u.roof = Math.min(u.roof, upg.params?.uValue ?? targetUValues['roof-insulation']?.roof ?? 0.20)
-        insulationEpcDelta += EPC_DELTA['roof-insulation'] ?? 0
         break
       case 'floor-insulation':
         u.floor = Math.min(u.floor, upg.params?.uValue ?? targetUValues['floor-insulation']?.floor ?? 0.22)
-        insulationEpcDelta += EPC_DELTA['floor-insulation'] ?? 0
         break
       case 'glazing':
         u.glazing = Math.min(u.glazing, upg.params?.uValue ?? 1.2)
-        insulationEpcDelta += EPC_DELTA[upg.tierId ?? 'glazing'] ?? 0
         break
       case 'draught-proofing':
         ach = Math.max(0.2, ach - 0.25)
@@ -347,19 +378,14 @@ export function buildEnergyModel(
         const isHybrid = upg.params?.hybrid === 1 || upg.tierId === 'hybrid'
         heatingSource = isHybrid ? 'hybrid' : 'heat-pump'
         if (isHybrid) {
-          hybridFraction = upg.params?.hpFraction ?? HYBRID_HP_FRACTION
+          hybridFraction = upg.params?.hpFraction ?? (HYBRID_FRACTION_BY_LABEL[effectiveLabel] ?? HYBRID_HP_FRACTION)
         } else {
           hwSource = 'heat-pump-boiler'
         }
         const srcType = upg.tierId === 'air-to-air' ? 'air-to-air'
           : upg.tierId === 'hybrid' ? 'hybrid'
           : (upg.params?.cop ?? 3.0) >= 3.5 ? 'ground-source' : 'air-source'
-        const currentLabelIdx = LABEL_ORDER.indexOf(profile.energyLabel as EnergyLabel)
-        const effectiveLabelIdx = Math.min(
-          (currentLabelIdx >= 0 ? currentLabelIdx : 4) + insulationEpcDelta,
-          LABEL_ORDER.length - 1
-        )
-        const effectiveLabel = LABEL_ORDER[effectiveLabelIdx]
+        hpIsGroundSource = srcType === 'ground-source'
         hpCop = copTable[srcType]?.[effectiveLabel] ?? copTable['air-source']?.[effectiveLabel] ?? upg.params?.cop ?? 3.0
         break
       }
@@ -388,6 +414,13 @@ export function buildEnergyModel(
   if (hasMVHR) ventLoss *= 0.20
 
   const rawHeatingDemand = wallLoss + roofLoss + floorLoss + glazingLoss + ventLoss
+
+  // Peak heat load at design conditions (NL: −10°C outdoor, 21°C indoor → ΔT = 31K)
+  const DESIGN_DELTA_T = 31
+  const peakHeatLoadKw = (
+    u.wall * wallArea + u.roof * roofArea + u.floor * floorArea +
+    u.glazing * windowArea + AIR_HEAT_FACTOR * ach * volume
+  ) * DESIGN_DELTA_T / 1000
 
   // --- Step 3: Normalize to actual consumption (additive correction) ---
 
@@ -432,9 +465,13 @@ export function buildEnergyModel(
 
   // --- Step 5: How demand is met ---
 
+  const backupFraction = hpIsGroundSource
+    ? BACKUP_FRACTION_GROUND_SOURCE
+    : (BACKUP_FRACTION_BY_LABEL[effectiveLabel] ?? 0.05)
+
   const heating = { source: heatingSource, gasM3: 0, electricityKwh: 0, cop: undefined as number | undefined }
   if (heatingSource === 'heat-pump') {
-    heating.electricityKwh = finalHeatingDemand / hpCop
+    heating.electricityKwh = finalHeatingDemand * ((1 - backupFraction) / hpCop + backupFraction)
     heating.cop = hpCop
   } else if (heatingSource === 'hybrid') {
     heating.electricityKwh = (finalHeatingDemand * hybridFraction) / hpCop
@@ -503,6 +540,7 @@ export function buildEnergyModel(
     totalElectricityFromGridKwh: gridElectricity,
     totalCostEuro,
     totalCo2Tonnes,
+    peakHeatLoadKw,
     normalizationFactor: normFactor,
   }
 }
@@ -605,8 +643,11 @@ export function calculateRecommendations(
     const blockedForVvE = profile.isVvE && isBlockedForVvE(def.requiresExteriorAccess)
     const restrictions = getRestrictions(upgradeId, profile)
     const isBlocked = restrictions.some(r => r.type === 'blocked')
-    const defAny = def as { tiers?: { tierId: string; labelNl: string; labelEn: string; params: Record<string, number>; costMultiplier: number; legacyId?: string }[]; tierInfoNl?: string; tierInfoEn?: string }
+    const defAny = def as { tiers?: { tierId: string; labelNl: string; labelEn: string; params: Record<string, number>; costMultiplier: number; legacyId?: string }[]; tierInfoNl?: string; tierInfoEn?: string; overlapsWith?: string[]; boosts?: string[]; boostedBy?: string[] }
     const tiers = defAny.tiers
+    const overlapsWith = defAny.overlapsWith as UpgradeResult['id'][] | undefined
+    const boosts = defAny.boosts as UpgradeResult['id'][] | undefined
+    const boostedBy = defAny.boostedBy as UpgradeResult['id'][] | undefined
 
     if (tiers && tiers.length > 0) {
       const tierResults: TierResult[] = []
@@ -624,7 +665,7 @@ export function calculateRecommendations(
         )
         const diff = diffModels(currentModel, afterModel)
 
-        if (diff.annualSavingEuro <= 0 && upgradeId !== 'solar-panels') continue
+        if (diff.annualSavingEuro <= 0 && upgradeId !== 'solar-panels' && upgradeId !== 'home-battery' && !isBlocked && !blockedForVvE) continue
 
         const relevantArea = upgradeId.includes('wall') ? wallArea
           : upgradeId === 'roof-insulation' ? roofArea
@@ -699,6 +740,9 @@ export function calculateRecommendations(
         savedKwhPerYear: bestTier.savedKwhPerYear,
         requiresBefore: requiredBefore,
         benefitsFrom: synergies,
+        overlapsWith,
+        boosts,
+        boostedBy,
         blockedForVvE: blockedForVvE || isBlocked,
         restrictions: restrictions.length > 0 ? restrictions : undefined,
         dataSource: profile.dataSource,
@@ -718,7 +762,7 @@ export function calculateRecommendations(
       )
       const diff = diffModels(currentModel, afterModel)
 
-      if (diff.annualSavingEuro <= 0 && upgradeId !== 'solar-panels') continue
+      if (diff.annualSavingEuro <= 0 && upgradeId !== 'solar-panels' && upgradeId !== 'home-battery' && !isBlocked && !blockedForVvE) continue
 
       const relevantArea = upgradeId.includes('wall') ? wallArea
         : upgradeId === 'roof-insulation' ? roofArea
@@ -744,6 +788,9 @@ export function calculateRecommendations(
         lifespanYears: def.lifespanYears,
         requiresBefore: requiredBefore,
         benefitsFrom: synergies,
+        overlapsWith,
+        boosts,
+        boostedBy,
         blockedForVvE: blockedForVvE || isBlocked,
         restrictions: restrictions.length > 0 ? restrictions : undefined,
         dataSource: profile.dataSource,
@@ -765,9 +812,14 @@ export function calculateRecommendations(
   }
 
   if (profile.heatingType === 'district-heating') {
-    const toRemove = new Set(['heat-pump', 'hot-water-heat-pump'])
-    for (let i = results.length - 1; i >= 0; i--) {
-      if (toRemove.has(results[i].id)) results.splice(i, 1)
+    for (const r of results) {
+      if (r.id === 'heat-pump' || r.id === 'hot-water-heat-pump') {
+        r.blockedForVvE = true
+        r.restrictions = [
+          ...(r.restrictions ?? []),
+          { type: 'blocked' as const, reasonNl: 'Niet mogelijk met stadsverwarming.', reasonEn: 'Not possible with district heating.' },
+        ]
+      }
     }
   }
 

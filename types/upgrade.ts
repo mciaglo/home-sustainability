@@ -117,6 +117,9 @@ export interface UpgradeResult {
   // Combination logic
   requiresBefore?: UpgradeId[] // must do these first
   benefitsFrom?: { upgradeId: UpgradeId; saving: string }[]
+  overlapsWith?: UpgradeId[]
+  boosts?: UpgradeId[]
+  boostedBy?: UpgradeId[]
   blockedForVvE: boolean
 
   // Housing restrictions
@@ -153,4 +156,7 @@ export interface UpgradeDefinition {
   installDays: string
   requiresExteriorAccess: boolean
   tiers?: TierDefinition[]
+  overlapsWith?: UpgradeId[]
+  boosts?: UpgradeId[]
+  boostedBy?: UpgradeId[]
 }

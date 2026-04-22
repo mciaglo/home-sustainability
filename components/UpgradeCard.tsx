@@ -5,6 +5,11 @@ import { useLocale } from '@/lib/locale-context'
 import { fmt } from '@/lib/constants'
 import type { UpgradeResult, UpgradeTag } from '@/types/upgrade'
 
+export type RelationshipChip =
+  | { kind: 'overlap'; counterpartNameNl: string; counterpartNameEn: string }
+  | { kind: 'synergy-active'; counterpartNameNl: string; counterpartNameEn: string; monthlyDelta: number }
+  | { kind: 'synergy-nudge'; counterpartNameNl: string; counterpartNameEn: string; monthlyDelta: number }
+
 const CURRENT_YEAR = new Date().getFullYear()
 
 function translateInstallDays(text: string, locale: string): string {
@@ -37,12 +42,12 @@ interface Props {
   onToggleSelect: (tierId?: string) => void
   onChangeTier?: (tierId: string) => void
   upgradeNames: Record<string, { nl: string; en: string }>
-  contextualSavings?: Map<string, { annualSaving: number; monthlySaving: number }>
-  standaloneSavings?: Map<string, { annualSaving: number; monthlySaving: number }>
+  chips?: RelationshipChip[]
   selectedIds?: Set<string>
+  currentLabel?: string
 }
 
-export default function UpgradeCard({ result, selected, selectedTierId, onToggleSelect, onChangeTier, upgradeNames, contextualSavings, standaloneSavings, selectedIds }: Props) {
+export default function UpgradeCard({ result, selected, selectedTierId, onToggleSelect, onChangeTier, upgradeNames, chips, selectedIds, currentLabel }: Props) {
   const { locale } = useLocale()
   const [expanded, setExpanded] = useState(false)
   const [viewedTierId, setViewedTierId] = useState(selectedTierId || result.selectedTierId)
@@ -55,13 +60,8 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
 
   const activeTier = result.tiers?.find(t => t.tierId === viewedTierId) ?? result.tiers?.[0] ?? null
 
-  const baseMonthlySaving = activeTier?.monthlySaving ?? result.monthlySaving
-  const baseAnnualSaving = activeTier?.annualSaving ?? result.annualSaving
-  const ctx = contextualSavings?.get(viewedTierId ?? '') ?? contextualSavings?.get('')
-  const monthlySaving = ctx?.monthlySaving ?? baseMonthlySaving
-  const annualSaving = ctx?.annualSaving ?? baseAnnualSaving
-  const standalone = standaloneSavings?.get(viewedTierId ?? '') ?? standaloneSavings?.get('')
-  const monthlyDelta = Math.round((ctx?.monthlySaving ?? baseMonthlySaving) - (standalone?.monthlySaving ?? baseMonthlySaving))
+  const monthlySaving = activeTier?.monthlySaving ?? result.monthlySaving
+  const annualSaving = activeTier?.annualSaving ?? result.annualSaving
   const paybackYears = activeTier?.paybackYears ?? result.paybackYears
   const costMin = activeTier?.costMin ?? result.costMin
   const costMax = activeTier?.costMax ?? result.costMax
@@ -106,54 +106,93 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
     }`}>
       {/* Collapsed header */}
       <div
-        className="flex items-center gap-3 px-5 py-4 cursor-pointer"
+        className="cursor-pointer"
         onClick={() => !isBlocked && setExpanded(e => !e)}
       >
-        <button
-          onClick={e => { e.stopPropagation(); if (!isBlocked) handleToggleSelect() }}
-          className={`w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center text-sm font-bold transition-all border-2 ${
-            selected
-              ? 'bg-emerald-700 border-emerald-700 text-white'
-              : 'border-stone-300 text-transparent hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-600'
-          }`}
-          title={locale === 'nl' ? 'Selecteren voor je plan' : 'Add to your plan'}
-        >
-          {selected ? '✓' : '+'}
-        </button>
+        <div className="flex items-center gap-3 px-5 py-4">
+          <button
+            onClick={e => { e.stopPropagation(); if (!isBlocked) handleToggleSelect() }}
+            className={`w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center text-sm font-bold transition-all border-2 ${
+              selected
+                ? 'bg-emerald-700 border-emerald-700 text-white'
+                : 'border-stone-300 text-transparent hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-600'
+            }`}
+            title={locale === 'nl' ? 'Selecteren voor je plan' : 'Add to your plan'}
+          >
+            {selected ? '✓' : '+'}
+          </button>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`font-semibold text-stone-900 ${isBlocked ? 'line-through' : ''}`}>
-              {name}
-            </span>
-            <TagBadge tag={result.tag} locale={locale} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`font-semibold text-stone-900 ${isBlocked ? 'line-through' : ''}`}>
+                {name}
+              </span>
+              <TagBadge tag={result.tag} locale={locale} />
+            </div>
+            <p className="text-sm text-stone-500 mt-0.5 truncate">
+              {locale === 'nl' ? result.description : result.descriptionEn}
+            </p>
           </div>
-          <p className="text-sm text-stone-500 mt-0.5 truncate">
-            {locale === 'nl' ? result.description : result.descriptionEn}
-          </p>
-        </div>
 
-        <div className="text-right flex-shrink-0">
-          {isBlocked ? (
-            <span className="text-xs text-stone-400">
-              {locale === 'nl' ? 'VvE vereist' : 'VvE required'}
+          <div className="text-right flex-shrink-0">
+            {isBlocked ? (
+              <span className="text-xs text-stone-400">
+                {locale === 'nl' ? 'VvE vereist' : 'VvE required'}
+              </span>
+            ) : (
+              <>
+                <p className="text-lg font-bold text-emerald-700">
+                  €{fmt(monthlySaving)}<span className="text-xs font-normal text-stone-400">{locale === 'nl' ? '/mnd' : '/mo'}</span>
+                </p>
+                <p className="text-xs text-stone-400">
+                  {locale === 'nl' ? `${paybackYears} jr terugverdientijd` : `${paybackYears} yr payback`}
+                </p>
+              </>
+            )}
+          </div>
+
+          {!isBlocked && (
+            <span className={`text-stone-400 transition-transform flex-shrink-0 ${expanded ? 'rotate-180' : ''}`}>
+              ▾
             </span>
-          ) : (
-            <>
-              <p className="text-lg font-bold text-emerald-700">
-                €{fmt(monthlySaving)}<span className="text-xs font-normal text-stone-400">{locale === 'nl' ? '/mnd' : '/mo'}</span>
-              </p>
-              <p className="text-xs text-stone-400">
-                {locale === 'nl' ? `${paybackYears} jr terugverdientijd` : `${paybackYears} yr payback`}
-              </p>
-            </>
           )}
         </div>
 
-        {!isBlocked && (
-          <span className={`text-stone-400 transition-transform flex-shrink-0 ${expanded ? 'rotate-180' : ''}`}>
-            ▾
-          </span>
+        {!isBlocked && chips && chips.length > 0 && (
+          <div className="px-5 pb-3 -mt-1 flex flex-wrap gap-1.5">
+            {chips.map((chip, i) => {
+              const counterpart = locale === 'nl' ? chip.counterpartNameNl : chip.counterpartNameEn
+              if (chip.kind === 'overlap') {
+                return (
+                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                    <span aria-hidden>🔄</span>
+                    {locale === 'nl'
+                      ? `Overlap met ${counterpart} — geen extra besparing`
+                      : `Redundant with ${counterpart} — no extra savings`}
+                  </span>
+                )
+              }
+              if (chip.kind === 'synergy-active') {
+                return (
+                  <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span aria-hidden>⬆</span>
+                    {locale === 'nl'
+                      ? `+€${chip.monthlyDelta}/mnd extra door ${counterpart}`
+                      : `+€${chip.monthlyDelta}/mo extra from your ${counterpart}`}
+                  </span>
+                )
+              }
+              // synergy-nudge
+              return (
+                <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <span aria-hidden>⬆</span>
+                  {locale === 'nl'
+                    ? `Voeg ${counterpart} toe voor tot +€${chip.monthlyDelta}/mnd extra`
+                    : `Add ${counterpart} for up to +€${chip.monthlyDelta}/mo extra`}
+                </span>
+              )
+            })}
+          </div>
         )}
       </div>
 
@@ -175,6 +214,16 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
       {/* Expanded body */}
       {expanded && !isBlocked && (
         <div className="border-t border-stone-100 px-5 pb-6 pt-5 space-y-5">
+
+          {isHeatPump && currentLabel && (currentLabel === 'G' || currentLabel === 'F') && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <p className="text-xs text-amber-700">
+                ⚠ {locale === 'nl'
+                  ? `Zonder extra isolatie bespaart een warmtepomp nauwelijks op een label ${currentLabel} woning. Combineer met isolatie.`
+                  : `Without added insulation, a heat pump barely saves money in a label ${currentLabel} home. Pair with insulation.`}
+              </p>
+            </div>
+          )}
 
           {/* Tier selector */}
           {result.tiers && result.tiers.length > 1 && (() => {
@@ -385,22 +434,6 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
                   ⚠ {locale === 'nl' ? r.reasonNl : r.reasonEn}
                 </p>
               ))}
-            </div>
-          )}
-
-          {/* Contextual savings delta */}
-          {monthlyDelta !== 0 && (
-            <div className={`rounded-xl px-4 py-3 border ${
-              monthlyDelta > 0
-                ? 'bg-emerald-50 border-emerald-200'
-                : 'bg-amber-50 border-amber-200'
-            }`}>
-              <p className={`text-xs ${monthlyDelta > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {monthlyDelta > 0 ? '↑' : '↓'}{' '}
-                {locale === 'nl'
-                  ? `€${Math.abs(monthlyDelta)}/mnd ${monthlyDelta > 0 ? 'meer' : 'minder'} besparing in combinatie met je geselecteerde maatregelen`
-                  : `€${Math.abs(monthlyDelta)}/mo ${monthlyDelta > 0 ? 'more' : 'less'} savings combined with your selected upgrades`}
-              </p>
             </div>
           )}
 

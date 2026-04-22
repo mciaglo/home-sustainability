@@ -11,7 +11,7 @@ import SortControls, { type SortMode } from '@/components/SortControls'
 import PriceScenarioToggle from '@/components/PriceScenarioToggle'
 import PlanPanel from '@/components/PlanPanel'
 import EnergyBreakdown from '@/components/EnergyBreakdown'
-import UpgradeCard from '@/components/UpgradeCard'
+import UpgradeCard, { type RelationshipChip } from '@/components/UpgradeCard'
 import LanguageToggle from '@/components/LanguageToggle'
 import { LABEL_ORDER, EPC_DELTA } from '@/lib/constants'
 import type { HomeProfile, EnergyLabel } from '@/types/home-profile'
@@ -154,81 +154,105 @@ export default function ResultsPage() {
     return buildEnergyModel(profile as HomeProfile, province, [], prices)
   }, [profile, scenario])
 
-  const standaloneSavings = useMemo(() => {
-    if (!profile || results.length === 0) return new Map<string, Map<string, { annualSaving: number; monthlySaving: number }>>()
+  const chipsByResult = useMemo(() => {
+    const map = new Map<string, RelationshipChip[]>()
+    if (!profile || results.length === 0) return map
     const province = getProvinceFromPostcode(profile.postcode ?? '1000')
     const prices = getScenarioPrices(scenario, profile)
     const hp = profile as HomeProfile
+
+    function tierSpec(r: UpgradeResult) {
+      const tierId = selections.get(r.id) ?? r.selectedTierId
+      const tier = r.tiers?.find(t => t.tierId === tierId) ?? r.tiers?.[0]
+      return { id: r.id, tierId: tier?.tierId ?? '', params: tier?.params }
+    }
+
     const baseModel = buildEnergyModel(hp, province, [], prices)
-    const map = new Map<string, Map<string, { annualSaving: number; monthlySaving: number }>>()
+    const resultById = new Map(results.map(r => [r.id, r] as const))
+
+    const standaloneCache = new Map<string, number>()
+    function standalone(r: UpgradeResult): number {
+      const cached = standaloneCache.get(r.id)
+      if (cached !== undefined) return cached
+      const m = buildEnergyModel(hp, province, [tierSpec(r)], prices)
+      const ann = diffModels(baseModel, m).annualSavingEuro
+      standaloneCache.set(r.id, ann)
+      return ann
+    }
+
+    const pairCache = new Map<string, number>()
+    function pairCombined(a: UpgradeResult, b: UpgradeResult): number {
+      const key = [a.id, b.id].sort().join('|')
+      const cached = pairCache.get(key)
+      if (cached !== undefined) return cached
+      const m = buildEnergyModel(hp, province, [tierSpec(a), tierSpec(b)], prices)
+      const ann = diffModels(baseModel, m).annualSavingEuro
+      pairCache.set(key, ann)
+      return ann
+    }
+
+    function synergyDelta(a: UpgradeResult, b: UpgradeResult): number {
+      return pairCombined(a, b) - standalone(a) - standalone(b)
+    }
+
+    function nameNl(id: string) { return UPGRADE_NAMES[id]?.nl ?? id }
+    function nameEn(id: string) { return UPGRADE_NAMES[id]?.en ?? id }
 
     for (const r of results) {
-      const tierMap = new Map<string, { annualSaving: number; monthlySaving: number }>()
-      if (r.tiers && r.tiers.length > 0) {
-        for (const tier of r.tiers) {
-          const withThis = buildEnergyModel(hp, province,
-            [{ id: r.id, tierId: tier.tierId, params: tier.params }], prices)
-          const diff = diffModels(baseModel, withThis)
-          const ann = Math.round(diff.annualSavingEuro)
-          tierMap.set(tier.tierId, { annualSaving: ann, monthlySaving: Math.round(ann / 12) })
-        }
-      } else {
-        const withThis = buildEnergyModel(hp, province, [{ id: r.id }], prices)
-        const diff = diffModels(baseModel, withThis)
-        const ann = Math.round(diff.annualSavingEuro)
-        tierMap.set('', { annualSaving: ann, monthlySaving: Math.round(ann / 12) })
-      }
-      map.set(r.id, tierMap)
-    }
-    return map
-  }, [results, profile, scenario])
+      const chips: RelationshipChip[] = []
+      const overlapIds = (r.overlapsWith ?? []).filter(id => selections.has(id) && resultById.has(id))
 
-  const contextualSavings = useMemo(() => {
-    if (!profile || results.length === 0) return new Map<string, Map<string, { annualSaving: number; monthlySaving: number }>>()
-    const province = getProvinceFromPostcode(profile.postcode ?? '1000')
-    const prices = getScenarioPrices(scenario, profile)
-    const hp = profile as HomeProfile
-
-    const selectedUpgrades = results
-      .filter(r => selections.has(r.id))
-      .map(r => {
-        const tierId = selections.get(r.id) ?? r.selectedTierId ?? ''
-        const tier = r.tiers?.find(t => t.tierId === tierId)
-        return { id: r.id, tierId, params: tier?.params }
-      })
-
-    const baseContextModel = buildEnergyModel(hp, province, selectedUpgrades, prices)
-    const map = new Map<string, Map<string, { annualSaving: number; monthlySaving: number }>>()
-
-    for (const r of results) {
-      const isSelected = selections.has(r.id)
-      const context = isSelected
-        ? selectedUpgrades.filter(u => u.id !== r.id)
-        : selectedUpgrades
-      const contextModel = isSelected
-        ? buildEnergyModel(hp, province, context, prices)
-        : baseContextModel
-
-      const tierMap = new Map<string, { annualSaving: number; monthlySaving: number }>()
-
-      if (r.tiers && r.tiers.length > 0) {
-        for (const tier of r.tiers) {
-          const withThis = buildEnergyModel(hp, province,
-            [...context, { id: r.id, tierId: tier.tierId, params: tier.params }], prices)
-          const diff = diffModels(contextModel, withThis)
-          const ann = Math.round(diff.annualSavingEuro)
-          tierMap.set(tier.tierId, { annualSaving: ann, monthlySaving: Math.round(ann / 12) })
-        }
-      } else {
-        const withThis = buildEnergyModel(hp, province,
-          [...context, { id: r.id }], prices)
-        const diff = diffModels(contextModel, withThis)
-        const ann = Math.round(diff.annualSavingEuro)
-        tierMap.set('', { annualSaving: ann, monthlySaving: Math.round(ann / 12) })
+      for (const id of overlapIds) {
+        chips.push({
+          kind: 'overlap',
+          counterpartNameNl: nameNl(id),
+          counterpartNameEn: nameEn(id),
+        })
       }
 
-      map.set(r.id, tierMap)
+      if (overlapIds.length === 0) {
+        const synergyIds = Array.from(new Set([...(r.boosts ?? []), ...(r.boostedBy ?? [])]))
+        const activePartners: { cp: UpgradeResult; delta: number }[] = []
+        const nudgeCandidates: { cp: UpgradeResult; delta: number }[] = []
+
+        for (const id of synergyIds) {
+          const cp = resultById.get(id)
+          if (!cp) continue
+          const delta = synergyDelta(r, cp)
+          if (delta <= 0) continue
+          if (selections.has(id)) activePartners.push({ cp, delta })
+          else nudgeCandidates.push({ cp, delta })
+        }
+
+        if (activePartners.length > 0) {
+          for (const { cp, delta } of activePartners) {
+            const monthly = Math.round(delta / 12)
+            if (monthly < 1) continue
+            chips.push({
+              kind: 'synergy-active',
+              counterpartNameNl: nameNl(cp.id),
+              counterpartNameEn: nameEn(cp.id),
+              monthlyDelta: monthly,
+            })
+          }
+        } else if (nudgeCandidates.length > 0) {
+          nudgeCandidates.sort((a, b) => b.delta - a.delta)
+          const best = nudgeCandidates[0]
+          const monthly = Math.round(best.delta / 12)
+          if (monthly >= 1) {
+            chips.push({
+              kind: 'synergy-nudge',
+              counterpartNameNl: nameNl(best.cp.id),
+              counterpartNameEn: nameEn(best.cp.id),
+              monthlyDelta: monthly,
+            })
+          }
+        }
+      }
+
+      if (chips.length > 0) map.set(r.id, chips)
     }
+
     return map
   }, [results, selections, profile, scenario])
 
@@ -264,9 +288,9 @@ export default function ResultsPage() {
                   onToggleSelect={(tierId) => toggleSelect(r.id, tierId ?? r.selectedTierId)}
                   onChangeTier={(tierId) => changeTier(r.id, tierId)}
                   upgradeNames={UPGRADE_NAMES}
-                  contextualSavings={contextualSavings.get(r.id)}
-                  standaloneSavings={standaloneSavings.get(r.id)}
+                  chips={chipsByResult.get(r.id)}
                   selectedIds={selectedIdSet}
+                  currentLabel={currentLabel}
                 />
               ))}
             </div>
@@ -285,9 +309,9 @@ export default function ResultsPage() {
           onToggleSelect={(tierId) => toggleSelect(r.id, tierId ?? r.selectedTierId)}
           onChangeTier={(tierId) => changeTier(r.id, tierId)}
           upgradeNames={UPGRADE_NAMES}
-          contextualSavings={contextualSavings.get(r.id)}
-          standaloneSavings={standaloneSavings.get(r.id)}
+          chips={chipsByResult.get(r.id)}
           selectedIds={selectedIdSet}
+          currentLabel={currentLabel}
         />
       ))}
     </div>

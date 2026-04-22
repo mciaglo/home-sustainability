@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useLocale } from '@/lib/locale-context'
 import { LABEL_ORDER, LABEL_COLOURS, EPC_DELTA, fmt } from '@/lib/constants'
 import { buildEnergyModel, diffModels, getScenarioPrices } from '@/lib/recommendations'
@@ -35,6 +36,7 @@ interface Props {
 
 export default function PlanPanel({ currentLabel, selections, results, upgradeNames, onRemove, profile, scenario = 'current' }: Props) {
   const { locale } = useLocale()
+  const [aboutOpen, setAboutOpen] = useState(false)
 
   const selected = results.filter(r => selections.has(r.id))
   const hasSelection = selected.length > 0
@@ -61,6 +63,23 @@ export default function PlanPanel({ currentLabel, selections, results, upgradeNa
   const planDiff = diffModels(currentModel, planModel)
   const totalSaving = Math.round(planDiff.annualSavingEuro)
 
+  const INSULATION_IDS = new Set(['cavity-wall-insulation', 'external-wall-insulation', 'roof-insulation', 'floor-insulation', 'glazing', 'draught-proofing'])
+  const hasHeatPump = selected.some(r => r.id === 'heat-pump')
+  const insulationUpgrades = appliedUpgrades.filter(u => INSULATION_IDS.has(u.id))
+  let hpSizingMultiplier = 1.0
+  let hpCapexReduction = 0
+  if (hasHeatPump && insulationUpgrades.length > 0) {
+    const peakBare = currentModel.peakHeatLoadKw
+    const insulatedModel = buildEnergyModel(profile, province, insulationUpgrades, prices)
+    const peakInsulated = insulatedModel.peakHeatLoadKw
+    const hpTierId = selections.get('heat-pump') ?? ''
+    const isGroundSource = hpTierId === 'ground-source'
+    const floor = isGroundSource ? 0.75 : 0.55
+    hpSizingMultiplier = peakBare > 0
+      ? Math.max(floor, Math.min(1.0, peakInsulated / peakBare))
+      : 1.0
+  }
+
   const avgCosts = new Map<string, number>()
   const totalNetCostRaw = selected.reduce((s, r) => {
     const tierId = selections.get(r.id) ?? ''
@@ -70,6 +89,11 @@ export default function PlanPanel({ currentLabel, selections, results, upgradeNa
       avg = tier ? Math.round((tier.netCostMin + tier.netCostMax) / 2) : Math.round((r.netCostMin + r.netCostMax) / 2)
     } else {
       avg = Math.round((r.netCostMin + r.netCostMax) / 2)
+    }
+    if (r.id === 'heat-pump' && hpSizingMultiplier < 1.0) {
+      const original = avg
+      avg = Math.round(avg * hpSizingMultiplier)
+      hpCapexReduction = original - avg
     }
     avgCosts.set(r.id, avg)
     return s + avg
@@ -90,6 +114,56 @@ export default function PlanPanel({ currentLabel, selections, results, upgradeNa
   const combinedDiffers = selected.length >= 2 && Math.abs(totalSaving - individualSavingsSum) > individualSavingsSum * 0.05
 
   const combinedPayback = totalSaving > 0 ? Math.round((totalNetCost / totalSaving) * 10) / 10 : 0
+
+  const sumOfStandalone = Math.round(individualSavingsSum)
+  const interactionsDelta = totalSaving - sumOfStandalone
+
+  const interactions: { nl: string; en: string }[] = []
+  if (selected.length >= 2) {
+    const selectedIdSet = new Set(selected.map(r => r.id))
+    const seenPairs = new Set<string>()
+    const resultById = new Map(results.map(r => [r.id, r] as const))
+    for (const a of selected) {
+      for (const id of a.overlapsWith ?? []) {
+        if (!selectedIdSet.has(id)) continue
+        const b = resultById.get(id)
+        if (!b) continue
+        const key = [a.id, b.id].sort().join('|') + '#overlap'
+        if (seenPairs.has(key)) continue
+        seenPairs.add(key)
+        const aNl = upgradeNames[a.id]?.nl ?? a.id
+        const bNl = upgradeNames[b.id]?.nl ?? b.id
+        const aEn = upgradeNames[a.id]?.en ?? a.id
+        const bEn = upgradeNames[b.id]?.en ?? b.id
+        interactions.push({
+          nl: `${aNl} en ${bNl} overlappen`,
+          en: `${aEn} and ${bEn} overlap`,
+        })
+      }
+      for (const id of a.boosts ?? []) {
+        if (!selectedIdSet.has(id)) continue
+        const b = resultById.get(id)
+        if (!b) continue
+        const key = [a.id, b.id].sort().join('|') + '#boost'
+        if (seenPairs.has(key)) continue
+        seenPairs.add(key)
+        const aNl = upgradeNames[a.id]?.nl ?? a.id
+        const bNl = upgradeNames[b.id]?.nl ?? b.id
+        const aEn = upgradeNames[a.id]?.en ?? a.id
+        const bEn = upgradeNames[b.id]?.en ?? b.id
+        interactions.push({
+          nl: `${bNl} versterkt door ${aNl}`,
+          en: `${bEn} boosted by ${aEn}`,
+        })
+      }
+    }
+  }
+  if (hpCapexReduction > 0) {
+    interactions.push({
+      nl: `Warmtepomp kleiner door isolatie: −€${fmt(hpCapexReduction)}`,
+      en: `Heat pump right-sized for insulated home: −€${fmt(hpCapexReduction)}`,
+    })
+  }
 
   return (
     <>
@@ -156,14 +230,48 @@ export default function PlanPanel({ currentLabel, selections, results, upgradeNa
                     </p>
                     <p className="text-lg font-bold text-stone-900">{combinedPayback} {locale === 'nl' ? 'jaar' : 'years'}</p>
                   </div>
-                  {combinedDiffers && (
-                    <p className="text-xs text-stone-400 italic">
-                      {locale === 'nl'
-                        ? 'Gecombineerde besparing houdt rekening met wisselwerking tussen maatregelen'
-                        : 'Combined savings account for interactions between upgrades'}
-                    </p>
-                  )}
                 </div>
+
+                {selected.length >= 2 && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setAboutOpen(o => !o)}
+                      className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700"
+                    >
+                      <span>ℹ {locale === 'nl' ? 'Over dit totaal' : 'About this total'}</span>
+                      <span className={`transition-transform ${aboutOpen ? 'rotate-180' : ''}`}>▾</span>
+                    </button>
+                    {aboutOpen && (
+                      <div className="mt-2 bg-stone-50 rounded-lg p-3 space-y-2 text-xs text-stone-600">
+                        <div className="flex justify-between">
+                          <span>{locale === 'nl' ? 'Som van losse besparingen' : 'Sum of standalone savings'}</span>
+                          <span>€{fmt(sumOfStandalone)}{locale === 'nl' ? '/jaar' : '/yr'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{locale === 'nl' ? 'Wisselwerking' : 'Interactions'}</span>
+                          <span>
+                            {interactionsDelta >= 0 ? '+' : '−'}€{fmt(Math.abs(Math.round(interactionsDelta)))}{locale === 'nl' ? '/jaar' : '/yr'}
+                          </span>
+                        </div>
+                        {interactions.length > 0 && (
+                          <ul className="pt-1 space-y-0.5 list-disc list-inside text-stone-500">
+                            {interactions.map((item, i) => (
+                              <li key={i}>{locale === 'nl' ? item.nl : item.en}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {combinedDiffers && (
+                          <p className="pt-1 text-stone-400 italic">
+                            {locale === 'nl'
+                              ? 'Gecombineerde besparing houdt rekening met wisselwerking tussen maatregelen'
+                              : 'Combined savings account for interactions between upgrades'}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <hr className="border-stone-100" />
 

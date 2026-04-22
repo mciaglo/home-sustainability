@@ -13,7 +13,8 @@
       "lifespanYears": 10,
       "difficulty": "diy",
       "installDays": "1 dag",
-      "requiresExteriorAccess": false
+      "requiresExteriorAccess": false,
+      "boosts": ["heat-pump"]
     },
     {
       "id": "smart-thermostat",
@@ -39,7 +40,9 @@
       "lifespanYears": 30,
       "difficulty": "professional",
       "installDays": "1 dag",
-      "requiresExteriorAccess": true
+      "requiresExteriorAccess": true,
+      "overlapsWith": ["external-wall-insulation"],
+      "boosts": ["heat-pump"]
     },
     {
       "id": "external-wall-insulation",
@@ -52,7 +55,9 @@
       "lifespanYears": 30,
       "difficulty": "professional",
       "installDays": "3–7 dagen",
-      "requiresExteriorAccess": true
+      "requiresExteriorAccess": true,
+      "overlapsWith": ["cavity-wall-insulation"],
+      "boosts": ["heat-pump"]
     },
     {
       "id": "roof-insulation",
@@ -72,7 +77,8 @@
         { "tierId": "rc-2.5", "labelNl": "Rc 2,5", "labelEn": "Rc 2.5", "params": { "uValue": 0.40 }, "costMultiplier": 0.6 },
         { "tierId": "rc-4.0", "labelNl": "Rc 4,0", "labelEn": "Rc 4.0", "params": { "uValue": 0.25 }, "costMultiplier": 1.0 },
         { "tierId": "rc-6.0", "labelNl": "Rc 6,0", "labelEn": "Rc 6.0", "params": { "uValue": 0.17 }, "costMultiplier": 1.4 }
-      ]
+      ],
+      "boosts": ["heat-pump"]
     },
     {
       "id": "floor-insulation",
@@ -91,7 +97,8 @@
       "tiers": [
         { "tierId": "rc-2.5", "labelNl": "Rc 2,5", "labelEn": "Rc 2.5", "params": { "uValue": 0.40 }, "costMultiplier": 0.7 },
         { "tierId": "rc-3.5", "labelNl": "Rc 3,5", "labelEn": "Rc 3.5", "params": { "uValue": 0.29 }, "costMultiplier": 1.0 }
-      ]
+      ],
+      "boosts": ["heat-pump"]
     },
     {
       "id": "glazing",
@@ -111,7 +118,8 @@
         { "tierId": "hr-plus-plus", "labelNl": "HR++", "labelEn": "HR++", "params": { "uValue": 1.2 }, "costMultiplier": 1.0, "legacyId": "hr-plus-plus-glazing" },
         { "tierId": "vacuum", "labelNl": "Vacuümglas", "labelEn": "Vacuum glass", "params": { "uValue": 0.5 }, "costMultiplier": 2.0, "legacyId": "triple-glazing" },
         { "tierId": "triple", "labelNl": "Triple glas", "labelEn": "Triple glazing", "params": { "uValue": 0.7 }, "costMultiplier": 1.5, "legacyId": "triple-glazing" }
-      ]
+      ],
+      "boosts": ["heat-pump"]
     },
     {
       "id": "solar-panels",
@@ -152,7 +160,8 @@
         { "tierId": "hybrid", "labelNl": "Hybride", "labelEn": "Hybrid", "params": { "cop": 3.0, "hybrid": 1 }, "costMultiplier": 0.5, "legacyId": "hybrid-heat-pump" },
         { "tierId": "air-source", "labelNl": "Lucht-water", "labelEn": "Air-source", "params": { "cop": 3.0 }, "costMultiplier": 1.0, "legacyId": "heat-pump-air" },
         { "tierId": "ground-source", "labelNl": "Bodem-water", "labelEn": "Ground-source", "params": { "cop": 4.0 }, "costMultiplier": 2.0, "legacyId": "heat-pump-ground" }
-      ]
+      ],
+      "boostedBy": ["cavity-wall-insulation", "external-wall-insulation", "roof-insulation", "floor-insulation", "glazing", "draught-proofing"]
     },
     {
       "id": "hot-water-heat-pump",
