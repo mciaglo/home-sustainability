@@ -161,7 +161,7 @@ function scaleUpgradeCost(
 export function getScenarioPrices(scenario: PriceScenario, profile?: { contractGasEuroPerM3?: number; contractElectricityEuroPerKwh?: number }): { gas: number; electricity: number } {
   switch (scenario) {
     case 'peak2022':
-      return { gas: energyPrices.peak2022GasEuroPerM3, electricity: energyPrices.electricityEuroPerKwh * (energyPrices.peak2022GasEuroPerM3 / energyPrices.gasEuroPerM3) }
+      return { gas: energyPrices.peak2022GasEuroPerM3, electricity: energyPrices.peak2022ElectricityEuroPerKwh }
     case 'conservative':
       return { gas: energyPrices.gasEuroPerM3 * energyPrices.conservativeMultiplier, electricity: energyPrices.electricityEuroPerKwh * energyPrices.conservativeMultiplier }
     case 'contract':

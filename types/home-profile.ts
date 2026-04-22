@@ -48,9 +48,6 @@ export interface HomeProfile {
   roofTiltDegrees?: number
   solarIrradianceKwhM2Year?: number
 
-  // Neighbours (CBS)
-  postcodeAverageLabel?: EnergyLabel
-
   // Grid
   hasGridCongestion: boolean
 

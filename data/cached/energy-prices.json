@@ -1,12 +1,13 @@
 {
-  "_source": "CBS Statline",
-  "_updated": "2025-01",
-  "_note": "Updated weekly by cron. Prices in €/unit incl. tax for average household.",
-  "gasEuroPerM3": 1.28,
-  "electricityEuroPerKwh": 0.32,
+  "_source": "CBS Statline + Overstappen.nl market avg",
+  "_updated": "2026-04",
+  "_note": "Prices in €/unit incl. all taxes for average household. Market avg of cheapest 20 suppliers.",
+  "gasEuroPerM3": 1.35,
+  "electricityEuroPerKwh": 0.25,
   "peak2022GasEuroPerM3": 1.85,
+  "peak2022ElectricityEuroPerKwh": 0.75,
   "conservativeMultiplier": 0.8,
-  "contractGasEuroPerM3": 1.45,
-  "contractElectricityEuroPerKwh": 0.40,
-  "feedInRateEuroPerKwh": 0.11
+  "contractGasEuroPerM3": 1.42,
+  "contractElectricityEuroPerKwh": 0.29,
+  "feedInRateEuroPerKwh": 0.15
 }

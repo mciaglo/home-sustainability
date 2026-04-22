@@ -266,7 +266,6 @@ export default function ResultsPage() {
     )
   }
 
-  const neighbourLabel = profile.postcodeAverageLabel
   const currentLabel = (profile.energyLabel || 'unknown') as EnergyLabel
 
   const cardList = sortMode === 'roi' ? (
@@ -338,13 +337,6 @@ export default function ResultsPage() {
             {profile.yearBuilt} · {profile.floorArea} m²
             {profile.buildingType ? ` · ${t(`buildingType.${profile.buildingType}` as Parameters<typeof t>[0])}` : ''}
           </p>
-          {neighbourLabel && currentLabel !== 'unknown' && (
-            <p className="text-sm text-stone-500 mt-1">
-              {locale === 'nl'
-                ? `Woningen in jouw postcode hebben gemiddeld label ${neighbourLabel} — jij hebt label ${currentLabel}`
-                : `Homes in your postcode average label ${neighbourLabel} — yours is label ${currentLabel}`}
-            </p>
-          )}
         </div>
 
         {/* Summary strip */}

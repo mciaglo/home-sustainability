@@ -1,9 +1,8 @@
 {
   "crons": [
-    { "path": "/api/cron/refresh?task=energy-prices",  "schedule": "0 6 * * 1" },
-    { "path": "/api/cron/refresh?task=subsidies",       "schedule": "0 6 1 * *" },
-    { "path": "/api/cron/refresh?task=co2-factors",     "schedule": "0 6 1 * *" },
-    { "path": "/api/cron/refresh?task=grid-congestion", "schedule": "0 6 1 * *" },
-    { "path": "/api/cron/refresh?task=subsidy-status",  "schedule": "0 6 * * 1" }
+    { "path": "/api/cron/refresh?task=energy-prices",  "schedule": "0 6 1 * *" },
+    { "path": "/api/cron/refresh?task=co2-factors",     "schedule": "0 6 1 */3 *" },
+    { "path": "/api/cron/refresh?task=grid-congestion", "schedule": "0 6 1 */3 *" },
+    { "path": "/api/cron/refresh?task=subsidies",       "schedule": "0 6 1 */6 *" }
   ]
 }

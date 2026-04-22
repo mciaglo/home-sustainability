@@ -33,10 +33,7 @@ export async function GET(req: NextRequest) {
     // 3. Build base profile
     const baseProfile = nlAdapter.buildProfile(buildingData, label)
 
-    // 4. Fetch neighbour average label (CBS)
-    const neighbourLabel = await nlAdapter.fetchNeighbourLabel(buildingData.postcode)
-
-    // 5. Check grid congestion
+    // 4. Check grid congestion
     const hasGridCongestion = await nlAdapter.fetchGridCongestion(buildingData.postcode)
 
     const profile: Partial<HomeProfile> = {
@@ -44,7 +41,6 @@ export async function GET(req: NextRequest) {
       address,
       energyLabelRegistered: registered,
       dataSource: registered ? 'ep-online' : 'build-era-lookup',
-      postcodeAverageLabel: neighbourLabel ?? undefined,
       hasGridCongestion,
       province: province ?? undefined,
     }

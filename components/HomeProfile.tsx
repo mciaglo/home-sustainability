@@ -100,16 +100,20 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
     setActualKwh('3100')
   }
 
+  function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)) }
+
   function handleConfirm() {
-    const gasVal = actualGas ? parseInt(actualGas, 10) : (initial.estimatedGasM3PerYear ?? 1500)
-    const kwhVal = actualKwh ? parseInt(actualKwh, 10) : (initial.estimatedElectricityKwhPerYear ?? 3200)
-    const gasCost = (contractGas ? parseFloat(contractGas) : 1.28)
-    const elecCost = (contractElectricity ? parseFloat(contractElectricity) : 0.32)
+    const clampedYear = clamp(yearBuilt, 1800, new Date().getFullYear())
+    const clampedArea = clamp(floorArea, 20, 1000)
+    const gasVal = clamp(actualGas ? parseInt(actualGas, 10) : (initial.estimatedGasM3PerYear ?? 1500), 0, 20000)
+    const kwhVal = clamp(actualKwh ? parseInt(actualKwh, 10) : (initial.estimatedElectricityKwhPerYear ?? 3200), 0, 50000)
+    const gasCost = clamp(contractGas ? parseFloat(contractGas) : 1.35, 0.01, 10)
+    const elecCost = clamp(contractElectricity ? parseFloat(contractElectricity) : 0.25, 0.01, 5)
 
     const correctedProfile: Partial<HomeProfile> = {
       ...initial,
-      yearBuilt,
-      floorArea,
+      yearBuilt: clampedYear,
+      floorArea: clampedArea,
       buildingType,
       energyLabel,
       heatingType,
@@ -317,7 +321,8 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="1.28"
+                max="10"
+                placeholder="1.35"
                 value={contractGas}
                 onChange={e => setContractGas(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"
@@ -328,7 +333,8 @@ export default function HomeProfileForm({ profile: initial, streetViewUrl }: Pro
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="0.32"
+                max="5"
+                placeholder="0.25"
                 value={contractElectricity}
                 onChange={e => setContractElectricity(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600 text-stone-900"

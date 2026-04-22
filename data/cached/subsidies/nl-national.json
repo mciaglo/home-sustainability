@@ -1,19 +1,19 @@
 {
-  "_source": "RVO / ISDE",
-  "_updated": "2026-01",
-  "_note": "Updated monthly by cron. Amounts in € per household unless noted. 2026 ISDE rates.",
+  "_source": "RVO / ISDE 2026",
+  "_updated": "2026-04",
+  "_note": "ISDE 2026 rates. Heat pumps: €1,025 base + €225/kW + €200 label bonus. Insulation: per-m² (shown here as typical amounts for ~100m² home). Budget: €511M total.",
   "subsidies": [
     {
       "id": "isde-warmtepomp-lucht",
       "name": "ISDE warmtepomp (lucht-water)",
       "nameEn": "ISDE heat pump (air-source)",
-      "amount": 3025,
+      "amount": 2500,
       "upgradeIds": ["heat-pump-air"],
-      "deadline": "Tot budget op is (verwacht oktober 2026)",
-      "deadlineEn": "Until budget runs out (expected October 2026)",
+      "deadline": "Tot budget op is (verwacht najaar 2026)",
+      "deadlineEn": "Until budget runs out (expected autumn 2026)",
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Woningen gebouwd voor 2021",
-      "conditionsEn": "Homes built before 2021",
+      "conditions": "Woningen gebouwd voor 2021. Bedrag o.b.v. ~5 kW A+++ toestel.",
+      "conditionsEn": "Homes built before 2021. Amount based on ~5 kW A+++ unit.",
       "maxYearBuilt": 2020
     },
     {
@@ -22,8 +22,8 @@
       "nameEn": "ISDE heat pump (ground-source)",
       "amount": 4425,
       "upgradeIds": ["heat-pump-ground"],
-      "deadline": "Tot budget op is (verwacht oktober 2026)",
-      "deadlineEn": "Until budget runs out (expected October 2026)",
+      "deadline": "Tot budget op is (verwacht najaar 2026)",
+      "deadlineEn": "Until budget runs out (expected autumn 2026)",
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
       "conditions": "Woningen gebouwd voor 2021",
       "conditionsEn": "Homes built before 2021",
@@ -35,51 +35,48 @@
       "nameEn": "ISDE hybrid heat pump",
       "amount": 2125,
       "upgradeIds": ["hybrid-heat-pump"],
-      "deadline": "Tot budget op is (verwacht oktober 2026)",
-      "deadlineEn": "Until budget runs out (expected October 2026)",
+      "deadline": "Tot budget op is (verwacht najaar 2026)",
+      "deadlineEn": "Until budget runs out (expected autumn 2026)",
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Woningen gebouwd voor 2021. Minimaal €500 subsidie.",
-      "conditionsEn": "Homes built before 2021. Minimum €500 subsidy.",
+      "conditions": "Woningen gebouwd voor 2021",
+      "conditionsEn": "Homes built before 2021",
       "maxYearBuilt": 2020
     },
     {
       "id": "isde-isolatie-dak",
       "name": "ISDE dakisolatie",
       "nameEn": "ISDE roof insulation",
-      "amount": 800,
+      "amount": 1000,
       "upgradeIds": ["roof-insulation"],
       "deadline": null,
       "deadlineEn": null,
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Minimaal Rc 3.5",
-      "conditionsEn": "Minimum Rc 3.5",
-      "minRcValue": 3.5
+      "conditions": "Minimaal Rd 3.5 m²K/W. €16,25/m² (enkel) of €32,50/m² (gecombineerd). Bedrag o.b.v. ~50 m².",
+      "conditionsEn": "Minimum Rd 3.5 m²K/W. €16.25/m² (single) or €32.50/m² (combined). Amount based on ~50 m²."
     },
     {
       "id": "isde-isolatie-gevel",
       "name": "ISDE gevelisolatie",
       "nameEn": "ISDE wall insulation",
-      "amount": 700,
+      "amount": 800,
       "upgradeIds": ["cavity-wall-insulation", "external-wall-insulation"],
       "deadline": null,
       "deadlineEn": null,
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Minimaal Rc 2.9",
-      "conditionsEn": "Minimum Rc 2.9",
-      "minRcValue": 2.9
+      "conditions": "Spouw: €5,25/m². Buitengevel: €20,25/m². Bedrag o.b.v. ~40 m² buitengevel.",
+      "conditionsEn": "Cavity: €5.25/m². External: €20.25/m². Amount based on ~40 m² external wall."
     },
     {
       "id": "isde-isolatie-vloer",
       "name": "ISDE vloerisolatie",
       "nameEn": "ISDE floor insulation",
-      "amount": 600,
+      "amount": 425,
       "upgradeIds": ["floor-insulation"],
       "deadline": null,
       "deadlineEn": null,
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Minimaal Rc 2.9",
-      "conditionsEn": "Minimum Rc 2.9",
-      "minRcValue": 2.9
+      "conditions": "Minimaal Rd 3.5 m²K/W. €5,50/m² (enkel) of €11/m² (gecombineerd). Bedrag o.b.v. ~50 m².",
+      "conditionsEn": "Minimum Rd 3.5 m²K/W. €5.50/m² (single) or €11/m² (combined). Amount based on ~50 m²."
     },
     {
       "id": "isde-glas",
@@ -90,8 +87,8 @@
       "deadline": null,
       "deadlineEn": null,
       "url": "https://www.rvo.nl/subsidies-financiering/isde",
-      "conditions": "Minimaal HR++ (U ≤ 1.2)",
-      "conditionsEn": "Minimum HR++ (U ≤ 1.2)"
+      "conditions": "HR++: €25/m². Triple: €111/m² (incl. kozijn). Bedrag o.b.v. ~15 m² HR++.",
+      "conditionsEn": "HR++: €25/m². Triple: €111/m² (incl. frame). Amount based on ~15 m² HR++."
     },
     {
       "id": "isde-warmtepompboiler",
@@ -112,11 +109,11 @@
       "nameEn": "Net metering (solar panels)",
       "amount": 0,
       "upgradeIds": ["solar-panels"],
-      "deadline": "Afbouw gepland na 2025",
-      "deadlineEn": "Phase-out planned after 2025",
-      "url": "https://www.rvo.nl/onderwerpen/saldering",
-      "conditions": "Nettometing via energieleverancier",
-      "conditionsEn": "Net metering via energy supplier"
+      "deadline": "Eindigt 1 januari 2027. Daarna terugleververgoeding ≥50% leveringstarief.",
+      "deadlineEn": "Ends January 1, 2027. After that, feed-in rate must be ≥50% of supply tariff.",
+      "url": "https://www.rijksoverheid.nl/onderwerpen/energie-thuis/salderingsregeling",
+      "conditions": "100% saldering t/m 31 december 2026",
+      "conditionsEn": "100% net metering through December 31, 2026"
     }
   ]
 }

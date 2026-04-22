@@ -63,6 +63,7 @@ export default function QuotePage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [website, setWebsite] = useState('')
   const [consent, setConsent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -129,6 +130,7 @@ export default function QuotePage() {
           name,
           email,
           phone,
+          website,
           consent,
           postcode: profile?.postcode ?? '',
           province,
@@ -361,6 +363,19 @@ export default function QuotePage() {
                     ? 'Installateurs bellen liever dan mailen — dit versnelt je offerte.'
                     : 'Installers prefer calling over email — this speeds up your quote.'}
                 </p>
+              </div>
+
+              <div className="absolute opacity-0 h-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
+                <label>
+                  Website
+                  <input
+                    type="text"
+                    value={website}
+                    onChange={e => setWebsite(e.target.value)}
+                    autoComplete="off"
+                    tabIndex={-1}
+                  />
+                </label>
               </div>
 
               <label className="flex items-start gap-2 cursor-pointer">

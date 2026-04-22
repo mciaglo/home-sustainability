@@ -214,12 +214,6 @@ async function fetchEPOnline(bagVboId: string): Promise<{ label: EnergyLabel; re
   }
 }
 
-// TODO: replace with real CBS Statline API call
-async function mockFetchNeighbourLabel(postcode: string): Promise<EnergyLabel | null> {
-  void postcode
-  return null
-}
-
 const LABEL_RANK: Record<string, number> = {
   'A+++': 10, 'A++': 9, 'A+': 8, 'A': 7, 'B': 6, 'C': 5, 'D': 4, 'E': 3, 'F': 2, 'G': 1, 'unknown': 0,
 }
@@ -313,10 +307,6 @@ export const nlAdapter: CountryAdapter = {
 
   async fetchEnergyLabel(bagId: string) {
     return fetchEPOnline(bagId)
-  },
-
-  async fetchNeighbourLabel(postcode: string) {
-    return mockFetchNeighbourLabel(postcode)
   },
 
   async fetchGridCongestion(postcode: string): Promise<boolean> {

@@ -30,7 +30,6 @@ export interface CountryAdapter {
   countryCode: string // 'NL' | 'DE' | 'FR' | 'BE'
   fetchBuildingData(address: string, hints?: AddressHints): Promise<BuildingData>
   fetchEnergyLabel(bagId: string): Promise<{ label: EnergyLabel; registered: boolean }>
-  fetchNeighbourLabel(postcode: string): Promise<EnergyLabel | null>
   fetchGridCongestion(postcode: string): Promise<boolean>
   getSubsidies(province: string, upgradeIds: UpgradeId[]): Subsidy[]
   buildProfile(buildingData: BuildingData, energyLabel: EnergyLabel): Partial<HomeProfile>
