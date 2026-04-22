@@ -31,16 +31,15 @@ export async function GET(req: NextRequest) {
     url.searchParams.set('aspect', aspect)
     url.searchParams.set('outputformat', 'json')
 
-    const res = await fetch(url.toString(), { next: { revalidate: 86400 } }) // cache 24h
+    const res = await fetch(url.toString(), { next: { revalidate: 86400 } })
     if (!res.ok) throw new Error(`PVGIS returned ${res.status}`)
 
     const data = (await res.json()) as PVGISResponse
     const irradianceKwhM2Year = data.outputs.totals.fixed['E_y']
 
-    return NextResponse.json({ irradianceKwhM2Year })
+    return NextResponse.json({ irradianceKwhM2Year, fallback: false })
   } catch (err) {
     console.error('PVGIS error', err)
-    // Return a reasonable default for NL rather than failing the whole lookup
     return NextResponse.json({ irradianceKwhM2Year: 950, fallback: true })
   }
 }

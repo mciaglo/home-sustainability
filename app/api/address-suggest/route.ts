@@ -20,7 +20,7 @@ function parseCentroide(wkt: string): { lat: number; lng: number } | null {
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')
-  if (!q || q.length < 2) return NextResponse.json({ suggestions: [] })
+  if (!q || q.length < 2) return NextResponse.json({ error: 'q parameter must be at least 2 characters' }, { status: 400 })
 
   try {
     const url = new URL('https://api.pdok.nl/bzk/locatieserver/search/v3_1/free')
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     url.searchParams.set('fl', 'weergavenaam,centroide_ll,postcode,straatnaam,huisnummer,woonplaatsnaam,adresseerbaarobject_id,nummeraanduiding_id,provincienaam')
 
     const res = await fetch(url.toString(), { next: { revalidate: 0 } })
-    if (!res.ok) return NextResponse.json({ suggestions: [] })
+    if (!res.ok) return NextResponse.json({ error: 'Address lookup service unavailable' }, { status: 502 })
 
     const data = await res.json()
     const docs: PdokDoc[] = data?.response?.docs ?? []
@@ -58,6 +58,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ suggestions })
   } catch (err) {
     console.error('PDOK suggest error', err)
-    return NextResponse.json({ suggestions: [] })
+    return NextResponse.json({ error: 'Address lookup failed' }, { status: 500 })
   }
 }

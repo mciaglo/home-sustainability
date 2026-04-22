@@ -45,9 +45,10 @@ interface Props {
   chips?: RelationshipChip[]
   selectedIds?: Set<string>
   currentLabel?: string
+  solarFallback?: boolean
 }
 
-export default function UpgradeCard({ result, selected, selectedTierId, onToggleSelect, onChangeTier, upgradeNames, chips, selectedIds, currentLabel }: Props) {
+export default function UpgradeCard({ result, selected, selectedTierId, onToggleSelect, onChangeTier, upgradeNames, chips, selectedIds, currentLabel, solarFallback }: Props) {
   const { locale } = useLocale()
   const [expanded, setExpanded] = useState(false)
   const [viewedTierId, setViewedTierId] = useState(selectedTierId || result.selectedTierId)
@@ -424,6 +425,15 @@ export default function UpgradeCard({ result, selected, selectedTierId, onToggle
                   : 'Note: net metering (salderingsregeling) is being phased out. Savings on exported electricity may be lower.'}
               </p>
             </div>
+          )}
+
+          {/* Solar irradiance fallback note */}
+          {result.id === 'solar-panels' && solarFallback && (
+            <p className="text-xs text-stone-400 italic">
+              {locale === 'nl'
+                ? 'Zonnestraling geschat op NL-gemiddelde (950 kWh/m²/jr) — locatiedata niet beschikbaar.'
+                : 'Solar irradiance estimated at NL average (950 kWh/m²/yr) — location data unavailable.'}
+            </p>
           )}
 
           {/* Restriction warnings */}

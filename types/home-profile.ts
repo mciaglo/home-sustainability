@@ -47,6 +47,7 @@ export interface HomeProfile {
   roofOrientationDegrees?: number // 0 = north, 180 = south
   roofTiltDegrees?: number
   solarIrradianceKwhM2Year?: number
+  solarIrradianceFallback?: boolean
 
   // Grid
   hasGridCongestion: boolean

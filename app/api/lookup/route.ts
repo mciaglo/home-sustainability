@@ -2,6 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { nlAdapter } from '@/lib/adapters/nl'
 import type { HomeProfile } from '@/types/home-profile'
 
+async function fetchSolarIrradiance(lat: number, lng: number): Promise<{ irradiance: number; fallback: boolean }> {
+  if (!lat || !lng) return { irradiance: 950, fallback: true }
+  try {
+    const url = new URL('https://re.jrc.ec.europa.eu/api/v5_2/PVcalc')
+    url.searchParams.set('lat', String(lat))
+    url.searchParams.set('lon', String(lng))
+    url.searchParams.set('peakpower', '1')
+    url.searchParams.set('loss', '14')
+    url.searchParams.set('mountingplace', 'building')
+    url.searchParams.set('angle', '35')
+    url.searchParams.set('aspect', '0')
+    url.searchParams.set('outputformat', 'json')
+
+    const res = await fetch(url.toString(), { next: { revalidate: 86400 } })
+    if (!res.ok) throw new Error(`PVGIS ${res.status}`)
+
+    const data = await res.json()
+    const kwhPerKwp: number = data?.outputs?.totals?.fixed?.['E_y']
+    if (!kwhPerKwp || kwhPerKwp < 100 || kwhPerKwp > 2000) throw new Error(`Unexpected value: ${kwhPerKwp}`)
+
+    return { irradiance: Math.round(kwhPerKwp), fallback: false }
+  } catch {
+    return { irradiance: 950, fallback: true }
+  }
+}
+
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get('address')
   const latParam = req.nextUrl.searchParams.get('lat')
@@ -33,8 +59,13 @@ export async function GET(req: NextRequest) {
     // 3. Build base profile
     const baseProfile = nlAdapter.buildProfile(buildingData, label)
 
-    // 4. Check grid congestion
-    const hasGridCongestion = await nlAdapter.fetchGridCongestion(buildingData.postcode)
+    // 4. Check grid congestion + fetch solar irradiance (parallel)
+    const lat = buildingData.lat
+    const lng = buildingData.lng
+    const [hasGridCongestion, solar] = await Promise.all([
+      nlAdapter.fetchGridCongestion(buildingData.postcode),
+      fetchSolarIrradiance(lat, lng),
+    ])
 
     const profile: Partial<HomeProfile> = {
       ...baseProfile,
@@ -42,6 +73,8 @@ export async function GET(req: NextRequest) {
       energyLabelRegistered: registered,
       dataSource: registered ? 'ep-online' : 'build-era-lookup',
       hasGridCongestion,
+      solarIrradianceKwhM2Year: solar.irradiance,
+      solarIrradianceFallback: solar.fallback,
       province: province ?? undefined,
     }
 

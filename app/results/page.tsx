@@ -290,6 +290,7 @@ export default function ResultsPage() {
                   chips={chipsByResult.get(r.id)}
                   selectedIds={selectedIdSet}
                   currentLabel={currentLabel}
+                  solarFallback={profile.solarIrradianceFallback}
                 />
               ))}
             </div>

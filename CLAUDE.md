@@ -10,7 +10,7 @@ A free, stateless web tool for EU homeowners (starting with the Netherlands) tha
 
 _Add build, run, test, and lint commands here once the project is scaffolded._
 
-Planned stack: `Next.js 14 (App Router) + TypeScript + Tailwind CSS`, hosted on Vercel.
+Stack: `Next.js 14 (App Router) + TypeScript + Tailwind CSS`, hosted on Vercel. Email delivery via [Resend](https://resend.com) (`RESEND_API_KEY` required for quote request feature).
 
 ## Architecture
 

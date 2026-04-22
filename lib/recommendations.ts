@@ -1,9 +1,45 @@
 import type { HomeProfile, InsulationProfile, EnergyLabel } from '@/types/home-profile'
 import type { UpgradeResult, UpgradeTag, PriceScenario, TierResult, Subsidy } from '@/types/upgrade'
-import uValues from '@/data/static/nta8800-u-values.json'
+import uValuesRaw from '@/data/static/nta8800-u-values.json'
 import upgradeDefs from '@/data/static/upgrade-definitions.json'
-import energyPrices from '@/data/cached/energy-prices.json'
-import hddData from '@/data/static/heating-degree-days.json'
+import energyPricesRaw from '@/data/cached/energy-prices.json'
+import hddDataRaw from '@/data/static/heating-degree-days.json'
+
+// ---------------------------------------------------------------------------
+// Typed JSON data — widen literal key types to index signatures once at the
+// import boundary so consuming code can use dynamic keys without inline casts.
+// ---------------------------------------------------------------------------
+
+interface SurfaceUValues { wall: number; roof: number; floor: number; glazing: number }
+interface UpgradeTarget { wall?: number; roof?: number; floor?: number; glazing?: number; standard?: string }
+
+interface Nta8800Data {
+  reference: Record<string, SurfaceUValues>
+  insulationLevelOverrides: Record<string, Record<string, number>>
+  heatPumpCopByLabel: Record<string, Record<string, number>>
+  airChangesPerHour: Record<string, number>
+  targets: Record<string, UpgradeTarget>
+}
+
+interface EnergyPriceData {
+  gasEuroPerM3: number
+  electricityEuroPerKwh: number
+  peak2022GasEuroPerM3: number
+  peak2022ElectricityEuroPerKwh: number
+  conservativeMultiplier: number
+  contractGasEuroPerM3: number
+  contractElectricityEuroPerKwh: number
+  feedInRateEuroPerKwh: number
+}
+
+interface HeatingDegreeDayData {
+  national_average: number
+  regions: Record<string, number>
+}
+
+const uValues = uValuesRaw as unknown as Nta8800Data
+const energyPrices = energyPricesRaw as unknown as EnergyPriceData
+const hddData = hddDataRaw as unknown as HeatingDegreeDayData
 import { getGridCo2Factor, co2ToTrees } from './co2'
 import { getSubsidies } from './subsidies'
 import { getRequiredBefore, getSynergies, isBlockedForVvE } from './combinations'
@@ -126,7 +162,7 @@ function getEffectiveUValues(
   eraUValues: { wall: number; roof: number; floor: number; glazing: number },
   insulation: InsulationProfile,
 ): { wall: number; roof: number; floor: number; glazing: number } {
-  const overrides = uValues.insulationLevelOverrides as Record<string, Record<string, number>>
+  const overrides = uValues.insulationLevelOverrides
   const surfaces = ['wall', 'roof', 'floor', 'glazing'] as const
   const result = { ...eraUValues }
   for (const s of surfaces) {
@@ -193,7 +229,7 @@ const EPC_DELTA: Record<string, number> = {
 }
 
 function getFeedInRate(): number {
-  return (energyPrices as unknown as Record<string, number>).feedInRateEuroPerKwh ?? 0.11
+  return energyPrices.feedInRateEuroPerKwh ?? 0.11
 }
 
 // ---------------------------------------------------------------------------
@@ -272,7 +308,7 @@ export function buildEnergyModel(
   const era = getBuildEra(profile.yearBuilt)
   const rawUValues = uValues.reference[era]
   const baseUValues = getEffectiveUValues(rawUValues, profile.insulation)
-  const achTable = uValues.airChangesPerHour as Record<string, number>
+  const achTable = uValues.airChangesPerHour
 
   // Areas
   const areaRatios: Record<string, { wall: number; roof: number; window: number }> = {
@@ -291,9 +327,9 @@ export function buildEnergyModel(
   const windowArea = profile.floorArea * ratios.window
   const volume = profile.floorArea * CEILING_HEIGHT
 
-  const hdd = (hddData.regions as Record<string, number>)[province] ?? hddData.national_average
-  const targetUValues = uValues.targets as unknown as Record<string, Record<string, number>>
-  const copTable = uValues.heatPumpCopByLabel as Record<string, Record<string, number>>
+  const hdd = hddData.regions[province] ?? hddData.national_average
+  const targetUValues = uValues.targets
+  const copTable = uValues.heatPumpCopByLabel
   const feedInRate = getFeedInRate()
 
   // --- Step 1: Apply upgrades to building parameters ---

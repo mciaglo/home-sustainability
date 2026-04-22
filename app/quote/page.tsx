@@ -6,7 +6,9 @@ import { useLocale } from '@/lib/locale-context'
 import { getProvinceFromPostcode } from '@/lib/postcode-province'
 import { calculateRecommendations } from '@/lib/recommendations'
 import upgradeDefsRaw from '@/data/static/upgrade-definitions.json'
-import installerCounts from '@/data/static/installer-counts.json'
+import installerCountsRaw from '@/data/static/installer-counts.json'
+
+const installerCounts = installerCountsRaw as unknown as { provinces: Record<string, number> }
 import LanguageToggle from '@/components/LanguageToggle'
 import { fmt } from '@/lib/constants'
 import type { HomeProfile } from '@/types/home-profile'
@@ -114,7 +116,7 @@ export default function QuotePage() {
   const twentyYearNet = upgradeDetails.reduce((s, u) => s + Math.max(0, u.annualSaving * 20 - u.netCostAvg), 0)
 
   const province = getProvinceFromPostcode(profile?.postcode ?? '1000')
-  const installerCount = (installerCounts.provinces as Record<string, number>)[province] ?? 15
+  const installerCount = installerCounts.provinces[province] ?? 15
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

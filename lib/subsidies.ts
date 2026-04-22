@@ -1,8 +1,8 @@
-import nationalSubsidies from '@/data/cached/subsidies/nl-national.json'
-import provincialSubsidies from '@/data/cached/subsidies/nl-provincial.json'
+import nationalSubsidiesRaw from '@/data/cached/subsidies/nl-national.json'
+import provincialSubsidiesRaw from '@/data/cached/subsidies/nl-provincial.json'
 import type { Subsidy, UpgradeId, LegacyUpgradeId } from '@/types/upgrade'
 
-interface NationalSubsidy {
+interface SubsidyEntry {
   id: string
   name: string
   nameEn?: string
@@ -15,6 +15,14 @@ interface NationalSubsidy {
   conditionsEn?: string
   minRcValue?: number
   maxYearBuilt?: number
+}
+
+const nationalSubsidies = nationalSubsidiesRaw as unknown as { subsidies: SubsidyEntry[] }
+const provincialSubsidies = provincialSubsidiesRaw as unknown as {
+  provinces: Record<string, {
+    provincial: SubsidyEntry[]
+    municipal: Record<string, SubsidyEntry[]>
+  }>
 }
 
 /**
@@ -31,7 +39,7 @@ export function getSubsidies(
   const results: Subsidy[] = []
 
   // National subsidies
-  for (const s of nationalSubsidies.subsidies as NationalSubsidy[]) {
+  for (const s of nationalSubsidies.subsidies) {
     if (s.upgradeIds.includes(upgradeId)) {
       if (s.minRcValue && tierParams?.uValue) {
         const effectiveRc = 1 / tierParams.uValue
@@ -50,12 +58,7 @@ export function getSubsidies(
   }
 
   // Provincial subsidies
-  const provinces = provincialSubsidies.provinces as Record<string, {
-    provincial: NationalSubsidy[]
-    municipal: Record<string, NationalSubsidy[]>
-  }>
-
-  const prov = provinces[province]
+  const prov = provincialSubsidies.provinces[province]
   if (prov) {
     for (const s of prov.provincial) {
       if (s.upgradeIds.includes(upgradeId)) {

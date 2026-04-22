@@ -90,6 +90,9 @@ export default function AddressInput() {
     if (!resolved) return
     setSubmitting(true)
 
+    sessionStorage.removeItem('homeProfile')
+    sessionStorage.removeItem('quoteSelections')
+
     const params = new URLSearchParams({ address: resolved.address })
     if (resolved.lat) params.set('lat', String(resolved.lat))
     if (resolved.lng) params.set('lng', String(resolved.lng))
@@ -102,6 +105,8 @@ export default function AddressInput() {
   }
 
   function handleSkip() {
+    sessionStorage.removeItem('homeProfile')
+    sessionStorage.removeItem('quoteSelections')
     router.push('/profile')
   }
 
